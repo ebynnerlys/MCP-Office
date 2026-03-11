@@ -1,0 +1,43 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "office-ai-mcp"
+version = "0.1.0"
+description = "Servidor MCP local para automatizar Word, Excel y PowerPoint en Windows"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "mcp>=1.0.0",
+  "pywin32>=308; platform_system == 'Windows'",
+  "pydantic>=2.7",
+  "python-dotenv>=1.0",
+  "tenacity>=8.2",
+  "rich>=13.7",
+  "loguru>=0.7",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0",
+  "ruff>=0.6.0",
+]
+
+[project.scripts]
+office-ai-mcp-word = "office_ai_mcp.word_server:main"
+office-ai-mcp-excel = "office_ai_mcp.excel_server:main"
+office-ai-mcp-powerpoint = "office_ai_mcp.powerpoint_server:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"

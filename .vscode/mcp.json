@@ -1,0 +1,37 @@
+{
+  "servers": {
+    "officeAiPowerPoint": {
+      "type": "stdio",
+      "command": "${workspaceFolder}\\.venv\\Scripts\\python.exe",
+      "args": ["-m", "office_ai_mcp.powerpoint_server", "--transport", "stdio"],
+      "cwd": "${workspaceFolder}",
+      "envFile": "${workspaceFolder}\\.env",
+      "env": {
+        "PYTHONUTF8": "1",
+        "PYTHONIOENCODING": "utf-8"
+      }
+    },
+    "officeAiWord": {
+      "type": "stdio",
+      "command": "${workspaceFolder}\\.venv\\Scripts\\python.exe",
+      "args": ["-m", "office_ai_mcp.word_server", "--transport", "stdio"],
+      "cwd": "${workspaceFolder}",
+      "envFile": "${workspaceFolder}\\.env",
+      "env": {
+        "PYTHONUTF8": "1",
+        "PYTHONIOENCODING": "utf-8"
+      }
+    },
+    "officeAiExcel": {
+      "type": "stdio",
+      "command": "${workspaceFolder}\\.venv\\Scripts\\python.exe",
+      "args": ["-m", "office_ai_mcp.excel_server", "--transport", "stdio"],
+      "cwd": "${workspaceFolder}",
+      "envFile": "${workspaceFolder}\\.env",
+      "env": {
+        "PYTHONUTF8": "1",
+        "PYTHONIOENCODING": "utf-8"
+      }
+    }
+  }
+}

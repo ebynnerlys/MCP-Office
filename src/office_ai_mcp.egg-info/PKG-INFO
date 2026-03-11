@@ -1,0 +1,211 @@
+Metadata-Version: 2.4
+Name: office-ai-mcp
+Version: 0.1.0
+Summary: Servidor MCP local para automatizar Word, Excel y PowerPoint en Windows
+Requires-Python: >=3.11
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: mcp>=1.0.0
+Requires-Dist: pywin32>=308; platform_system == "Windows"
+Requires-Dist: pydantic>=2.7
+Requires-Dist: python-dotenv>=1.0
+Requires-Dist: tenacity>=8.2
+Requires-Dist: rich>=13.7
+Requires-Dist: loguru>=0.7
+Provides-Extra: dev
+Requires-Dist: pytest>=8.0; extra == "dev"
+Requires-Dist: ruff>=0.6.0; extra == "dev"
+Dynamic: license-file
+
+# Office AI MCP
+
+Proyecto base para un servidor MCP local en Python orientado a automatizar Word, Excel y PowerPoint en Windows mediante COM y `pywin32`.
+
+## Que incluye esta inicializacion
+
+- servidor MCP con `FastMCP`
+- herramientas separadas por Word, Excel y PowerPoint
+- configuracion por variables de entorno
+- validacion de rutas y copias de seguridad
+- pruebas basicas para utilidades seguras
+- documentacion minima para arrancar el MVP
+
+## Requisitos
+
+- Windows 10 u 11
+- Python 3.11 o superior
+- Microsoft Office de escritorio instalado
+
+## Arranque rapido
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+Copy-Item .env.example .env
+pip install -e .
+office-ai-mcp --transport stdio
+```
+
+Para exponerlo por HTTP:
+
+```powershell
+office-ai-mcp --transport streamable-http --host 127.0.0.1 --port 8000
+```
+
+## Prueba rapida del MCP
+
+Desde VS Code puedes arrancar el servidor definido en [ .vscode/mcp.json ](.vscode/mcp.json) y usar prompts en el chat. Si quieres una prueba local directa sin pasar por el chat, ejecuta:
+
+```powershell
+.\.venv\Scripts\python.exe .\scripts\test_mcp_powerpoint.py ".\docs\Presentación - HobbyConnect 2.pptx" --slide-index 1
+```
+
+Ese script conecta como cliente MCP por `stdio`, lista las tools disponibles, resume las diapositivas y extrae el texto de la diapositiva indicada.
+
+Para probar edición visual de PowerPoint sobre una copia de trabajo:
+
+```powershell
+.\.venv\Scripts\python.exe .\scripts\test_mcp_powerpoint_visual.py ".\tmp\hobbyconnect-working.pptx" --slide-index 67 --title-shape-index 1 --body-shape-index 2
+```
+
+Ese script aplica transición, formato de texto, color de relleno, color de borde, fondo y animación, y luego limpia las animaciones de la slide probada.
+
+## Herramientas registradas en este arranque
+
+### Sistema
+
+- `server_status`
+- `create_working_backup`
+
+### Word
+
+- `word_get_structure`
+- `word_replace_text`
+- `word_export_pdf`
+
+### Excel
+
+- `excel_list_sheets`
+- `excel_read_range`
+- `excel_write_range`
+- `excel_export_pdf`
+
+### PowerPoint
+
+- `ppt_list_slides`
+- `ppt_get_slide_shapes`
+- `ppt_get_slide_text`
+- `ppt_get_slide_transition`
+- `ppt_get_slide_animations`
+- `ppt_apply_style_preset`
+- `ppt_set_slide_transition`
+- `ppt_set_shape_text_style`
+- `ppt_set_shape_fill`
+- `ppt_set_shape_line`
+- `ppt_set_slide_background`
+- `ppt_add_shape`
+- `ppt_add_connector`
+- `ppt_connect_shapes`
+- `ppt_add_table`
+- `ppt_get_slide_tables`
+- `ppt_set_table_cell_text`
+- `ppt_add_chart`
+- `ppt_get_slide_charts`
+- `ppt_set_chart_title`
+- `ppt_set_chart_data`
+- `ppt_set_chart_series_style`
+- `ppt_set_chart_layout`
+- `ppt_add_smartart`
+- `ppt_get_slide_smartart`
+- `ppt_set_smartart_node_text`
+- `ppt_add_shape_animation`
+- `ppt_clear_slide_animations`
+- `ppt_replace_text`
+- `ppt_add_slide`
+- `ppt_insert_image`
+- `ppt_apply_theme`
+- `ppt_export_pdf`
+- `ppt_export_slide_images`
+- `ppt_save_as`
+
+Presets de estilo PowerPoint disponibles:
+
+- `executive`
+- `spotlight`
+- `warm_briefing`
+
+Aliases de SmartArt soportados:
+
+- `basic_list`
+- `picture_title_list`
+- `vertical_bullet_list`
+- `vertical_box_list`
+- `horizontal_bullet_list`
+- `picture_accent_list`
+- `segmented_process`
+- `basic_process`
+- `hierarchy_list`
+- `table_hierarchy`
+- `step_up_process`
+- `step_down_process`
+
+Tipos de chart soportados:
+
+- `column_clustered`
+- `column_stacked`
+- `bar_clustered`
+- `line`
+- `area`
+- `pie`
+- `doughnut`
+- `scatter`
+- `radar`
+
+Posiciones de leyenda soportadas:
+
+- `bottom`
+- `corner`
+- `left`
+- `right`
+- `top`
+
+Tipos de shape soportados:
+
+- `rectangle`
+- `rounded_rectangle`
+- `oval`
+- `diamond`
+- `hexagon`
+- `parallelogram`
+- `chevron`
+- `right_arrow`
+
+Tipos de connector soportados:
+
+- `straight`
+- `elbow`
+- `curved`
+
+## Estructura
+
+```text
+.
+├── docs/
+├── src/office_ai_mcp/
+│   ├── models/
+│   ├── services/
+│   ├── tools/
+│   └── utils/
+├── tests/
+├── informe-editor-ia-office-python.md
+├── pyproject.toml
+└── requirements.txt
+```
+
+## Siguientes pasos naturales
+
+1. Añadir mas tools de Word para estilos, comentarios y control de cambios.
+2. Extender Excel con formulas, charts y resumenes estructurados.
+3. Ampliar PowerPoint con presets mas sofisticados y edicion de elementos complejos.
+4. Añadir allowlist estricta y confirmaciones para operaciones destructivas.
