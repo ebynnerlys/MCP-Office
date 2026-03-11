@@ -8,11 +8,11 @@ Cobertura funcional objetivo: inventario exhaustivo, por bloques, de las capacid
   - Abrir una presentación explícitamente con opciones de solo lectura o reparación.
 - `ppt_close_presentation`
   - Cerrar una presentación abierta.
-- `ppt_save`
+- [x] `ppt_save`
   - Guardar cambios en el archivo actual.
 - `ppt_save_as`
   - Guardar con otro nombre, ruta o formato.
-- `ppt_save_copy`
+- [x] `ppt_save_copy`
   - Guardar una copia sin cambiar la ruta activa.
 - `ppt_merge_presentations`
   - Unir varias presentaciones en una sola.
@@ -22,34 +22,34 @@ Cobertura funcional objetivo: inventario exhaustivo, por bloques, de las capacid
   - Comparar dos `.pptx`.
 - `ppt_repair_presentation`
   - Intentar abrir y reparar archivos dañados si COM lo soporta.
-- `ppt_get_document_properties`
+- [x] `ppt_get_document_properties`
   - Leer propiedades del archivo.
-- `ppt_set_document_properties`
+- [x] `ppt_set_document_properties`
   - Modificar autor, título, asunto, etiquetas.
 - `ppt_add_custom_property`
   - Propiedades personalizadas.
 - `ppt_remove_custom_property`
   - Eliminar propiedades personalizadas.
-- `ppt_get_file_links`
+- [x] `ppt_get_file_links`
   - Inspeccionar vínculos externos presentes en el archivo.
 
 ## 2. Gestión de diapositivas
 
-- `ppt_duplicate_slide`
+- [x] `ppt_duplicate_slide`
   - Duplicar una diapositiva existente.
-- `ppt_delete_slide`
+- [x] `ppt_delete_slide`
   - Eliminar una o varias diapositivas.
-- `ppt_move_slide`
+- [x] `ppt_move_slide`
   - Cambiar el orden de una diapositiva.
 - `ppt_copy_slide_to_presentation`
   - Copiar una diapositiva a otro archivo `.pptx`.
-- `ppt_hide_slide`
+- [x] `ppt_hide_slide`
   - Ocultar una diapositiva en modo presentación.
-- `ppt_unhide_slide`
+- [x] `ppt_unhide_slide`
   - Volver a mostrar una diapositiva.
-- `ppt_set_slide_name`
+- [x] `ppt_set_slide_name`
   - Asignar o cambiar un nombre interno a la diapositiva.
-- `ppt_get_slide_metadata`
+- [x] `ppt_get_slide_metadata`
   - Leer información ampliada: id, nombre, layout, sección, oculta/no oculta.
 - `ppt_add_section`
   - Crear secciones de diapositivas.
@@ -59,16 +59,16 @@ Cobertura funcional objetivo: inventario exhaustivo, por bloques, de las capacid
   - Reubicar una diapositiva en una sección.
 - `ppt_delete_section`
   - Eliminar secciones.
-- `ppt_get_slide_summary_extended`
+- [x] `ppt_get_slide_summary_extended`
   - Resumen ampliado con texto, tablas, charts, notas y animaciones.
 
 ## 3. Layouts, masters, placeholders y temas
 
-- `ppt_list_layouts`
+- [x] `ppt_list_layouts`
   - Listar layouts disponibles en la presentación.
-- `ppt_apply_layout`
+- [x] `ppt_apply_layout`
   - Cambiar el layout de una diapositiva existente.
-- `ppt_get_slide_layout`
+- [x] `ppt_get_slide_layout`
   - Consultar el layout actual.
 - `ppt_list_masters`
   - Listar patrones de diapositivas.
@@ -84,9 +84,9 @@ Cobertura funcional objetivo: inventario exhaustivo, por bloques, de las capacid
   - Aplicar variantes del tema activo.
 - `ppt_extract_theme`
   - Exportar o resumir el tema activo.
-- `ppt_reset_slide_to_layout`
+- [x] `ppt_reset_slide_to_layout`
   - Restablecer una slide a su layout original.
-- `ppt_list_placeholders`
+- [x] `ppt_list_placeholders`
   - Enumerar placeholders de una slide o layout.
 - `ppt_fill_placeholder`
   - Escribir contenido en un placeholder por tipo.
@@ -97,46 +97,46 @@ Cobertura funcional objetivo: inventario exhaustivo, por bloques, de las capacid
 
 ## 4. Texto, tipografía y contenido narrativo
 
-- `ppt_find_text`
+- [x] `ppt_find_text`
   - Buscar texto en toda la presentación.
-- `ppt_replace_text_all`
+- [x] `ppt_replace_text_all`
   - Reemplazar texto en toda la presentación, no solo en una slide.
-- `ppt_set_slide_title`
+- [x] `ppt_set_slide_title`
   - Cambiar solo el título de una diapositiva.
-- `ppt_get_shape_text_runs`
+- [x] `ppt_get_shape_text_runs`
   - Obtener fragmentos de texto con formato por rango.
-- `ppt_set_text_range_style`
+- [x] `ppt_set_text_range_style`
   - Dar formato a una parte concreta del texto.
-- `ppt_insert_bullets`
+- [x] `ppt_insert_bullets`
   - Crear listas con viñetas en un shape.
-- `ppt_set_bullet_style`
+- [x] `ppt_set_bullet_style`
   - Modificar sangría, nivel, símbolo y espaciado de viñetas.
-- `ppt_set_paragraph_spacing`
+- [x] `ppt_set_paragraph_spacing`
   - Ajustar espaciado antes/después e interlineado.
-- `ppt_set_textbox_margins`
+- [x] `ppt_set_textbox_margins`
   - Cambiar márgenes internos del cuadro de texto.
-- `ppt_set_text_direction`
+- [x] `ppt_set_text_direction`
   - Cambiar orientación del texto.
-- `ppt_set_autofit`
+- [x] `ppt_set_autofit`
   - Ajustar texto automáticamente al shape.
-- `ppt_set_proofing_language`
+- [x] `ppt_set_proofing_language`
   - Configurar idioma de corrección.
-- `ppt_spellcheck_slide`
+- [x] `ppt_spellcheck_slide`
   - Revisión ortográfica de una slide.
-- `ppt_spellcheck_presentation`
+- [x] `ppt_spellcheck_presentation`
   - Revisión completa.
-- `ppt_translate_text`
+- [x] `ppt_translate_text`
   - Traducir texto si Office lo soporta.
 
 ## 5. Notas, comentarios y revisión
 
-- `ppt_get_presenter_notes_all`
+- [x] `ppt_get_presenter_notes_all`
   - Extraer todas las notas del presentador.
-- `ppt_find_in_notes`
+- [x] `ppt_find_in_notes`
   - Buscar texto dentro de las notas.
 - `ppt_set_notes_style`
   - Dar formato al texto de notas.
-- `ppt_replace_notes_text`
+- [x] `ppt_replace_notes_text`
   - Reemplazar texto dentro de notas.
 - `ppt_list_comments`
   - Listar comentarios por diapositiva.
@@ -157,154 +157,154 @@ Cobertura funcional objetivo: inventario exhaustivo, por bloques, de las capacid
 
 ## 6. Shapes, geometría y composición visual
 
-- `ppt_duplicate_shape`
+- [x] `ppt_duplicate_shape`
   - Duplicar un elemento individual.
-- `ppt_delete_shape`
+- [x] `ppt_delete_shape`
   - Eliminar shapes por índice o nombre.
-- `ppt_rename_shape`
+- [x] `ppt_rename_shape`
   - Renombrar un shape para flujos más robustos.
-- `ppt_find_shapes`
+- [x] `ppt_find_shapes`
   - Buscar shapes por nombre, tipo o texto.
-- `ppt_group_shapes`
+- [x] `ppt_group_shapes`
   - Agrupar varios elementos.
-- `ppt_ungroup_shapes`
+- [x] `ppt_ungroup_shapes`
   - Desagrupar un grupo.
-- `ppt_align_shapes`
+- [x] `ppt_align_shapes`
   - Alinear a izquierda, derecha, centro, arriba, abajo, medio.
-- `ppt_distribute_shapes`
+- [x] `ppt_distribute_shapes`
   - Distribuir horizontal o verticalmente.
-- `ppt_resize_shapes`
+- [x] `ppt_resize_shapes`
   - Igualar ancho, alto o ambos.
-- `ppt_rotate_shape`
+- [x] `ppt_rotate_shape`
   - Rotar un shape.
-- `ppt_flip_shape`
+- [x] `ppt_flip_shape`
   - Voltear horizontal o verticalmente.
-- `ppt_set_shape_position`
+- [x] `ppt_set_shape_position`
   - Mover un shape a coordenadas exactas.
-- `ppt_set_shape_size`
+- [x] `ppt_set_shape_size`
   - Redimensionar un shape.
-- `ppt_lock_aspect_ratio`
+- [x] `ppt_lock_aspect_ratio`
   - Bloquear proporción de un elemento.
-- `ppt_set_shape_visibility`
+- [x] `ppt_set_shape_visibility`
   - Mostrar u ocultar un shape.
-- `ppt_bring_to_front`
+- [x] `ppt_bring_to_front`
   - Traer al frente.
-- `ppt_send_to_back`
+- [x] `ppt_send_to_back`
   - Enviar al fondo.
-- `ppt_bring_forward`
+- [x] `ppt_bring_forward`
   - Avanzar una capa.
-- `ppt_send_backward`
+- [x] `ppt_send_backward`
   - Retroceder una capa.
-- `ppt_set_shape_shadow`
+- [x] `ppt_set_shape_shadow`
   - Aplicar sombra.
-- `ppt_set_shape_glow`
+- [x] `ppt_set_shape_glow`
   - Aplicar resplandor.
-- `ppt_set_shape_reflection`
+- [x] `ppt_set_shape_reflection`
   - Aplicar reflejo.
-- `ppt_set_shape_soft_edges`
+- [x] `ppt_set_shape_soft_edges`
   - Ajustar bordes suaves.
-- `ppt_set_shape_3d`
+- [x] `ppt_set_shape_3d`
   - Aplicar efectos 3D.
-- `ppt_merge_shapes`
+- [x] `ppt_merge_shapes`
   - Unir, fragmentar, combinar o restar formas.
-- `ppt_crop_shape_to_content`
+- [x] `ppt_crop_shape_to_content`
   - Recortar al contenido visible.
 
 ## 7. Imágenes, iconos y multimedia
 
-- `ppt_replace_image`
+- [x] `ppt_replace_image`
   - Sustituir una imagen conservando posición y tamaño.
-- `ppt_crop_image`
+- [x] `ppt_crop_image`
   - Recortar imagen.
-- `ppt_reset_image`
+- [x] `ppt_reset_image`
   - Restaurar recorte o ajustes.
-- `ppt_set_image_transparency`
+- [x] `ppt_set_image_transparency`
   - Ajustar transparencia.
-- `ppt_set_image_brightness`
+- [x] `ppt_set_image_brightness`
   - Brillo de imagen.
-- `ppt_set_image_contrast`
+- [x] `ppt_set_image_contrast`
   - Contraste de imagen.
 - `ppt_compress_images`
   - Reducir peso del archivo.
 - `ppt_insert_icon`
   - Insertar iconos del catálogo Office.
-- `ppt_insert_svg`
+- [x] `ppt_insert_svg`
   - Insertar SVG.
-- `ppt_add_video`
+- [x] `ppt_add_video`
   - Insertar vídeo.
-- `ppt_set_video_playback`
+- [x] `ppt_set_video_playback`
   - Configurar reproducción automática, loop, volumen.
-- `ppt_trim_video`
+- [x] `ppt_trim_video`
   - Ajustar recorte temporal del vídeo.
-- `ppt_add_audio`
+- [x] `ppt_add_audio`
   - Insertar audio.
-- `ppt_set_audio_playback`
+- [x] `ppt_set_audio_playback`
   - Configurar audio entre diapositivas, autoplay, loop.
 - `ppt_add_screen_recording`
   - Insertar grabación de pantalla si la API lo soporta.
-- `ppt_extract_media_inventory`
+- [x] `ppt_extract_media_inventory`
   - Inventariar archivos multimedia usados.
 
 ## 8. Tablas
 
-- `ppt_add_row_to_table`
+- [x] `ppt_add_row_to_table`
   - Insertar filas.
-- `ppt_add_column_to_table`
+- [x] `ppt_add_column_to_table`
   - Insertar columnas.
-- `ppt_delete_row_from_table`
+- [x] `ppt_delete_row_from_table`
   - Eliminar filas.
-- `ppt_delete_column_from_table`
+- [x] `ppt_delete_column_from_table`
   - Eliminar columnas.
-- `ppt_merge_table_cells`
+- [x] `ppt_merge_table_cells`
   - Combinar celdas.
-- `ppt_split_table_cells`
+- [x] `ppt_split_table_cells`
   - Dividir celdas.
-- `ppt_set_table_style`
+- [x] `ppt_set_table_style`
   - Aplicar estilo de tabla.
-- `ppt_set_table_cell_style`
+- [x] `ppt_set_table_cell_style`
   - Formato de relleno, borde y texto por celda.
-- `ppt_set_table_row_style`
+- [x] `ppt_set_table_row_style`
   - Formato por fila.
-- `ppt_set_table_column_style`
+- [x] `ppt_set_table_column_style`
   - Formato por columna.
-- `ppt_autofit_table`
+- [x] `ppt_autofit_table`
   - Ajustar tamaño al contenido.
-- `ppt_distribute_table_rows`
+- [x] `ppt_distribute_table_rows`
   - Distribuir alturas.
-- `ppt_distribute_table_columns`
+- [x] `ppt_distribute_table_columns`
   - Distribuir anchos.
-- `ppt_sort_table`
+- [x] `ppt_sort_table`
   - Ordenar filas por columna.
-- `ppt_table_from_csv`
+- [x] `ppt_table_from_csv`
   - Crear tabla desde CSV.
-- `ppt_table_from_excel_range`
+- [x] `ppt_table_from_excel_range`
   - Crear o refrescar una tabla desde Excel.
 
 ## 9. Charts
 
-- `ppt_refresh_chart`
+- [x] `ppt_refresh_chart`
   - Refrescar chart embebido.
-- `ppt_set_chart_axis_scale`
+- [x] `ppt_set_chart_axis_scale`
   - Definir mínimo, máximo y unidades.
-- `ppt_set_chart_series_order`
+- [x] `ppt_set_chart_series_order`
   - Reordenar series.
-- `ppt_add_chart_series`
+- [x] `ppt_add_chart_series`
   - Añadir una serie nueva.
-- `ppt_delete_chart_series`
+- [x] `ppt_delete_chart_series`
   - Eliminar series.
-- `ppt_set_chart_data_labels`
+- [x] `ppt_set_chart_data_labels`
   - Configurar etiquetas de datos.
-- `ppt_set_chart_gridlines`
+- [x] `ppt_set_chart_gridlines`
   - Activar o desactivar rejillas.
-- `ppt_set_chart_colors`
+- [x] `ppt_set_chart_colors`
   - Paleta por serie o chart completo.
-- `ppt_change_chart_type`
+- [x] `ppt_change_chart_type`
   - Convertir a otro tipo de chart.
-- `ppt_link_chart_to_excel`
+- [x] `ppt_link_chart_to_excel`
   - Vincular chart a un archivo Excel.
-- `ppt_break_chart_link`
+- [x] `ppt_break_chart_link`
   - Romper vínculo externo.
-- `ppt_export_chart_data`
+- [x] `ppt_export_chart_data`
   - Extraer los datos del gráfico.
 
 ## 10. SmartArt, diagramas y conectores

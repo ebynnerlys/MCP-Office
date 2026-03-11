@@ -46,10 +46,40 @@ class ExcelRangeResult(BaseModel):
     values: Any
 
 
+class DocumentPropertiesResult(BaseModel):
+    file_path: str
+    built_in: dict[str, Any] = Field(default_factory=dict)
+    custom: dict[str, Any] = Field(default_factory=dict)
+
+
+class FileLinksResult(BaseModel):
+    file_path: str
+    links: list[Any] = Field(default_factory=list)
+
+
 class SlideSummary(BaseModel):
     slide_index: int
     title: str | None = None
     shape_count: int
+
+
+class SlideMetadataSummary(BaseModel):
+    slide_index: int
+    slide_id: int | None = None
+    name: str | None = None
+    title: str | None = None
+    shape_count: int = 0
+    hidden: bool = False
+    layout_id: int | None = None
+    layout_index: int | None = None
+    layout_name: str | None = None
+    section_index: int | None = None
+    section_name: str | None = None
+
+
+class SlideMetadataResult(BaseModel):
+    file_path: str
+    slide: SlideMetadataSummary
 
 
 class ShapeSummary(BaseModel):
@@ -87,16 +117,125 @@ class SlideTextResult(BaseModel):
     texts: list[str] = Field(default_factory=list)
 
 
+class TextRunSummary(BaseModel):
+    run_index: int
+    start: int
+    length: int
+    text: str
+    font_name: str | None = None
+    font_size: float | None = None
+    bold: bool | None = None
+    italic: bool | None = None
+    underline: bool | None = None
+    color: str | None = None
+    language_id: int | None = None
+
+
+class ShapeTextRunsResult(BaseModel):
+    file_path: str
+    slide_index: int
+    shape_index: int
+    run_count: int
+    runs: list[TextRunSummary] = Field(default_factory=list)
+
+
+class TextMatchSummary(BaseModel):
+    slide_index: int
+    location: str
+    occurrences: int = 1
+    shape_index: int | None = None
+    shape_name: str | None = None
+    text_preview: str | None = None
+
+
+class PresentationTextSearchResult(BaseModel):
+    file_path: str
+    query: str
+    match_count: int
+    matches: list[TextMatchSummary] = Field(default_factory=list)
+
+
+class SpellingIssueSummary(BaseModel):
+    word: str
+    occurrences: int = 1
+    slide_index: int
+    location: str
+    shape_index: int | None = None
+    shape_name: str | None = None
+
+
+class SlideSpellcheckResult(BaseModel):
+    file_path: str
+    slide_index: int
+    issue_count: int
+    issues: list[SpellingIssueSummary] = Field(default_factory=list)
+
+
+class PresentationSpellcheckResult(BaseModel):
+    file_path: str
+    issue_count: int
+    issues: list[SpellingIssueSummary] = Field(default_factory=list)
+
+
 class SlideNotesResult(BaseModel):
     file_path: str
     slide_index: int
     notes_text: str = ""
 
 
+class PresentationNotesResult(BaseModel):
+    file_path: str
+    slides: list[SlideNotesResult] = Field(default_factory=list)
+
+
 class SlideShapesResult(BaseModel):
     file_path: str
     slide_index: int
     shapes: list[ShapeSummary] = Field(default_factory=list)
+
+
+class ShapeSearchResult(BaseModel):
+    file_path: str
+    slide_index: int
+    match_count: int
+    shapes: list[ShapeSummary] = Field(default_factory=list)
+
+
+class PlaceholderSummary(BaseModel):
+    shape_index: int
+    name: str
+    placeholder_type: int | None = None
+    has_text: bool = False
+    text_preview: str | None = None
+    left: float
+    top: float
+    width: float
+    height: float
+
+
+class SlidePlaceholdersResult(BaseModel):
+    file_path: str
+    slide_index: int
+    placeholders: list[PlaceholderSummary] = Field(default_factory=list)
+
+
+class LayoutSummary(BaseModel):
+    layout_id: int | None = None
+    layout_index: int | None = None
+    layout_name: str | None = None
+    design_index: int | None = None
+    master_name: str | None = None
+
+
+class PresentationLayoutsResult(BaseModel):
+    file_path: str
+    layouts: list[LayoutSummary] = Field(default_factory=list)
+
+
+class SlideLayoutResult(BaseModel):
+    file_path: str
+    slide_index: int
+    layout: LayoutSummary
 
 
 class SlideTransitionResult(BaseModel):
@@ -126,6 +265,28 @@ class SlideAnimationsResult(BaseModel):
     slide_index: int
     animation_count: int
     animations: list[AnimationSummary] = Field(default_factory=list)
+
+
+class MediaSummary(BaseModel):
+    slide_index: int
+    shape_index: int
+    shape_name: str
+    media_kind: str | None = None
+    source_path: str | None = None
+    linked: bool | None = None
+    left: float
+    top: float
+    width: float
+    height: float
+    volume: float | None = None
+    trim_start: int | None = None
+    trim_end: int | None = None
+
+
+class PresentationMediaInventoryResult(BaseModel):
+    file_path: str
+    media_count: int
+    items: list[MediaSummary] = Field(default_factory=list)
 
 
 class TableSummary(BaseModel):
@@ -168,6 +329,17 @@ class SlideChartsResult(BaseModel):
     charts: list[ChartSummary] = Field(default_factory=list)
 
 
+class ChartDataExportResult(BaseModel):
+    file_path: str
+    slide_index: int
+    shape_index: int
+    chart_type: int | None = None
+    categories: list[Any] = Field(default_factory=list)
+    series: list[ChartSeriesSummary] = Field(default_factory=list)
+    exported_path: str | None = None
+    export_format: str | None = None
+
+
 class SmartArtNodeSummary(BaseModel):
     node_index: int
     text: str
@@ -185,3 +357,16 @@ class SlideSmartArtResult(BaseModel):
     file_path: str
     slide_index: int
     smartart_items: list[SmartArtSummary] = Field(default_factory=list)
+
+
+class ExtendedSlideSummaryResult(BaseModel):
+    file_path: str
+    slide_index: int
+    metadata: SlideMetadataSummary
+    texts: list[str] = Field(default_factory=list)
+    notes_text: str = ""
+    shapes: list[ShapeSummary] = Field(default_factory=list)
+    tables: list[TableSummary] = Field(default_factory=list)
+    charts: list[ChartSummary] = Field(default_factory=list)
+    smartart_items: list[SmartArtSummary] = Field(default_factory=list)
+    animations: list[AnimationSummary] = Field(default_factory=list)
