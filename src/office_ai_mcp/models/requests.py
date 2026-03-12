@@ -65,6 +65,147 @@ class PowerPointSlideLayoutRequest(PowerPointSlideRequest):
     layout: str = Field(min_length=1)
 
 
+class PowerPointMasterRequest(DocumentPathRequest):
+    master_index: int = Field(ge=1)
+
+
+class PowerPointOptionalMasterRequest(DocumentPathRequest):
+    master_index: int | None = Field(default=None, ge=1)
+    create_backup: bool = False
+
+
+class PowerPointMasterBackgroundRequest(PowerPointMasterRequest):
+    color: str = Field(min_length=1)
+
+
+class PowerPointMasterFontsRequest(PowerPointMasterRequest):
+    title_font_name: str | None = None
+    title_font_size: float | None = Field(default=None, gt=0)
+    body_font_name: str | None = None
+    body_font_size: float | None = Field(default=None, gt=0)
+
+    @model_validator(mode="after")
+    def validate_changes(self) -> "PowerPointMasterFontsRequest":
+        if self.title_font_name is not None and not self.title_font_name.strip():
+            raise ValueError("title_font_name cannot be empty")
+        if self.body_font_name is not None and not self.body_font_name.strip():
+            raise ValueError("body_font_name cannot be empty")
+        if not any(
+            value is not None
+            for value in (
+                self.title_font_name,
+                self.title_font_size,
+                self.body_font_name,
+                self.body_font_size,
+            )
+        ):
+            raise ValueError("at least one master font field must be provided")
+        return self
+
+
+class PowerPointMasterColorsRequest(PowerPointMasterRequest):
+    background_color: str | None = None
+    title_text_color: str | None = None
+    body_text_color: str | None = None
+    accent_color: str | None = None
+
+    @model_validator(mode="after")
+    def validate_changes(self) -> "PowerPointMasterColorsRequest":
+        if not any(
+            value is not None
+            for value in (
+                self.background_color,
+                self.title_text_color,
+                self.body_text_color,
+                self.accent_color,
+            )
+        ):
+            raise ValueError("at least one master color field must be provided")
+        return self
+
+
+class PowerPointBuiltinThemeRequest(DocumentPathRequest):
+    theme_name: str = Field(min_length=1)
+
+    @field_validator("theme_name")
+    @classmethod
+    def validate_theme_name(cls, value: str) -> str:
+        cleaned = value.strip()
+        if not cleaned:
+            raise ValueError("theme_name cannot be empty")
+        return cleaned
+
+
+class PowerPointDesignIdeasRequest(DocumentPathRequest):
+    slide_index: int | None = Field(default=None, ge=1)
+    fallback_preset: str | None = "executive"
+
+    @model_validator(mode="after")
+    def validate_fallback(self) -> "PowerPointDesignIdeasRequest":
+        if self.fallback_preset is not None and not self.fallback_preset.strip():
+            raise ValueError("fallback_preset cannot be empty when provided")
+        return self
+
+
+class PowerPointThemeVariantRequest(PowerPointMasterRequest):
+    variant: str = Field(min_length=1)
+
+    @field_validator("variant")
+    @classmethod
+    def validate_variant(cls, value: str) -> str:
+        cleaned = value.strip()
+        if not cleaned:
+            raise ValueError("variant cannot be empty")
+        return cleaned
+
+
+class PowerPointPlaceholderRequest(PowerPointSlideRequest):
+    shape_index: int | None = Field(default=None, ge=1)
+    shape_name: str | None = None
+    placeholder_type: int | None = Field(default=None, ge=1)
+    placeholder_occurrence: int = Field(default=1, ge=1)
+
+    @model_validator(mode="after")
+    def validate_placeholder_selector(self) -> "PowerPointPlaceholderRequest":
+        selector_count = sum(
+            value is not None for value in (self.shape_index, self.shape_name, self.placeholder_type)
+        )
+        if selector_count != 1:
+            raise ValueError("provide exactly one of shape_index, shape_name or placeholder_type")
+        if self.shape_name is not None and not self.shape_name.strip():
+            raise ValueError("shape_name cannot be empty")
+        return self
+
+
+class PowerPointFillPlaceholderRequest(PowerPointPlaceholderRequest):
+    text: str = ""
+    text_color: str | None = None
+    font_name: str | None = None
+    font_size: float | None = Field(default=None, gt=0)
+
+
+class PowerPointReplacePlaceholderRequest(PowerPointPlaceholderRequest):
+    replacement_kind: str = Field(default="textbox", min_length=1)
+    text: str | None = None
+    image_path: str | None = None
+    shape_type: str = Field(default="rectangle", min_length=1)
+    fill_color: str | None = None
+    line_color: str | None = None
+    text_color: str | None = None
+    font_name: str | None = None
+    font_size: float | None = Field(default=None, gt=0)
+
+    @model_validator(mode="after")
+    def validate_replacement(self) -> "PowerPointReplacePlaceholderRequest":
+        normalized = self.replacement_kind.strip().lower().replace("-", "_").replace(" ", "_")
+        if normalized not in {"textbox", "text", "image", "shape"}:
+            raise ValueError("replacement_kind must be one of textbox, text, image or shape")
+        if normalized == "image":
+            if self.image_path is None or not self.image_path.strip():
+                raise ValueError("image_path is required when replacement_kind=image")
+        return self
+
+
 class PowerPointSlideTitleRequest(PowerPointSlideRequest):
     title: str = ""
 
@@ -251,6 +392,13 @@ class PowerPointNotesRequest(PowerPointSlideRequest):
     append: bool = False
 
 
+class PowerPointCreatePresentationRequest(DocumentPathRequest):
+    layout: str = Field(default="title", min_length=1)
+    title: str | None = None
+    body_text: str | None = None
+    create_backup: bool = False
+
+
 class PowerPointAddSlideRequest(DocumentPathRequest):
     layout: str = Field(default="title_and_text", min_length=1)
     position: int | None = Field(default=None, ge=1)
@@ -407,6 +555,14 @@ class PowerPointTextStyleRequest(PowerPointShapeRequest):
     underline: bool | None = None
     color: str | None = None
     alignment: str | None = None
+
+
+class PowerPointTextGradientRequest(PowerPointShapeRequest):
+    start_color: str = Field(min_length=1)
+    end_color: str = Field(min_length=1)
+    style: str = Field(default="horizontal", min_length=1)
+    variant: int = Field(default=1, ge=1, le=4)
+    text: str | None = None
 
 
 class PowerPointShapeTextRunsRequest(PowerPointShapeRequest):
@@ -641,6 +797,13 @@ class PowerPointShape3DRequest(PowerPointShapeRequest):
 class PowerPointBackgroundRequest(PowerPointSlideRequest):
     color: str = Field(min_length=1)
     follow_master: bool = False
+
+
+class PowerPointBackgroundGradientRequest(PowerPointSlideRequest):
+    start_color: str = Field(min_length=1)
+    end_color: str = Field(min_length=1)
+    style: str = Field(default="horizontal", min_length=1)
+    variant: int = Field(default=1, ge=1, le=4)
 
 
 class PowerPointAnimationRequest(PowerPointShapeRequest):

@@ -232,6 +232,48 @@ class PresentationLayoutsResult(BaseModel):
     layouts: list[LayoutSummary] = Field(default_factory=list)
 
 
+class MasterSummary(BaseModel):
+    master_index: int
+    master_name: str | None = None
+    theme_name: str | None = None
+    layout_count: int = 0
+
+
+class ThemeVariantSummary(BaseModel):
+    variant_index: int
+    name: str | None = None
+    color_scheme_name: str | None = None
+    font_scheme_name: str | None = None
+
+
+class PresentationMastersResult(BaseModel):
+    file_path: str
+    masters: list[MasterSummary] = Field(default_factory=list)
+
+
+class MasterThemeSummary(BaseModel):
+    master_index: int
+    master_name: str | None = None
+    theme_name: str | None = None
+    background_color: str | None = None
+    fonts: dict[str, Any] = Field(default_factory=dict)
+    colors: dict[str, Any] = Field(default_factory=dict)
+    layouts: list[LayoutSummary] = Field(default_factory=list)
+    placeholders: list[PlaceholderSummary] = Field(default_factory=list)
+    variants: list[ThemeVariantSummary] = Field(default_factory=list)
+
+
+class MasterDetailsResult(BaseModel):
+    file_path: str
+    master: MasterThemeSummary
+
+
+class PresentationThemeResult(BaseModel):
+    file_path: str
+    theme_name: str | None = None
+    masters: list[MasterThemeSummary] = Field(default_factory=list)
+
+
 class SlideLayoutResult(BaseModel):
     file_path: str
     slide_index: int

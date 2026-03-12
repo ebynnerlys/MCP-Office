@@ -19,14 +19,19 @@ from office_ai_mcp.models.responses import (
     ExtendedSlideSummaryResult,
     FileLinksResult,
     LayoutSummary,
+    MasterDetailsResult,
+    MasterSummary,
+    MasterThemeSummary,
     MediaSummary,
     OperationResult,
     PlaceholderSummary,
     PresentationLayoutsResult,
     PresentationMediaInventoryResult,
+    PresentationMastersResult,
     PresentationNotesResult,
     PresentationSummary,
     PresentationSpellcheckResult,
+    PresentationThemeResult,
     PresentationTextSearchResult,
     ShapeSummary,
     ShapeSearchResult,
@@ -51,6 +56,7 @@ from office_ai_mcp.models.responses import (
     SpellingIssueSummary,
     TextRunSummary,
     TextMatchSummary,
+    ThemeVariantSummary,
 )
 from office_ai_mcp.services.base import OfficeService
 from office_ai_mcp.utils.com_cleanup import office_application
@@ -196,6 +202,15 @@ TRANSITION_SPEEDS = {
     "medium": 2,
     "fast": 3,
 }
+GRADIENT_STYLES = {
+    "horizontal": "msoGradientHorizontal",
+    "vertical": "msoGradientVertical",
+    "diagonal_up": "msoGradientDiagonalUp",
+    "diagonal_down": "msoGradientDiagonalDown",
+    "from_corner": "msoGradientFromCorner",
+    "from_title": "msoGradientFromTitle",
+    "from_center": "msoGradientFromCenter",
+}
 TEXT_ALIGNMENTS = {
     "left": 1,
     "center": 2,
@@ -331,6 +346,31 @@ SMARTART_LAYOUTS = {
     "step_up_process": "urn:microsoft.com/office/officeart/2009/3/layout/StepUpProcess",
     "step_down_process": "urn:microsoft.com/office/officeart/2005/8/layout/StepDownProcess",
 }
+TITLE_PLACEHOLDER_TYPES = {1, 3}
+THEME_COLOR_CONSTANTS = {
+    "background_1": "msoThemeBackground1",
+    "text_1": "msoThemeText1",
+    "background_2": "msoThemeBackground2",
+    "text_2": "msoThemeText2",
+    "accent_1": "msoThemeAccent1",
+    "accent_2": "msoThemeAccent2",
+    "accent_3": "msoThemeAccent3",
+    "accent_4": "msoThemeAccent4",
+    "accent_5": "msoThemeAccent5",
+    "accent_6": "msoThemeAccent6",
+    "hyperlink": "msoThemeHyperlink",
+    "followed_hyperlink": "msoThemeFollowedHyperlink",
+}
+THEME_FONT_LANGUAGE_CONSTANTS = {
+    "latin": "msoThemeLatin",
+    "east_asian": "msoThemeEastAsian",
+    "complex_script": "msoThemeComplexScript",
+}
+DESIGN_IDEAS_COMMANDS = (
+    "DesignIdeas",
+    "DesignerDesignIdeas",
+    "Designer",
+)
 BUILTIN_DOCUMENT_PROPERTY_NAMES = {
     "author": "Author",
     "title": "Title",
@@ -457,6 +497,16 @@ def resolve_text_direction(direction: str) -> str | int:
         supported = ", ".join(sorted(TEXT_DIRECTIONS))
         raise ValueError(f"Unsupported text direction: {direction}. Supported values: {supported}")
     return TEXT_DIRECTIONS[normalized]
+
+
+def resolve_gradient_style(style: str) -> str | int:
+    normalized = normalize_powerpoint_token(style)
+    if normalized.lstrip("-").isdigit():
+        return int(normalized)
+    if normalized not in GRADIENT_STYLES:
+        supported = ", ".join(sorted(GRADIENT_STYLES))
+        raise ValueError(f"Unsupported gradient style: {style}. Supported values: {supported}")
+    return GRADIENT_STYLES[normalized]
 
 
 def resolve_text_autofit_mode(mode: str) -> str | int:
@@ -775,6 +825,38 @@ class PowerPointService(OfficeService):
             return bool(shape.HasSmartArt)
         return False
 
+    def _shape_supports_text(self, shape: object) -> bool:
+        with suppress(Exception):
+            return bool(shape.HasTextFrame and shape.TextFrame is not None)
+        return False
+
+    def _get_placeholder_type(self, shape: object) -> int | None:
+        placeholder_type = None
+        with suppress(Exception):
+            placeholder_type = int(shape.PlaceholderFormat.Type)
+        return placeholder_type
+
+    def _shape_is_title_placeholder(self, shape: object) -> bool:
+        return self._get_placeholder_type(shape) in TITLE_PLACEHOLDER_TYPES
+
+    def _extract_placeholder_summary(self, shape: object, index: int) -> PlaceholderSummary | None:
+        placeholder_type = self._get_placeholder_type(shape)
+        if placeholder_type is None:
+            return None
+
+        shape_summary = self._shape_summary(shape, index)
+        return PlaceholderSummary(
+            shape_index=index,
+            name=shape_summary.name,
+            placeholder_type=placeholder_type,
+            has_text=shape_summary.has_text,
+            text_preview=shape_summary.text_preview,
+            left=shape_summary.left,
+            top=shape_summary.top,
+            width=shape_summary.width,
+            height=shape_summary.height,
+        )
+
     def _find_title_shape(self, slide: object) -> object | None:
         with suppress(Exception):
             if slide.Shapes.HasTitle:
@@ -792,7 +874,7 @@ class PowerPointService(OfficeService):
             with suppress(Exception):
                 if title_name and str(shape.Name) == title_name:
                     continue
-                if self._shape_has_text(shape):
+                if self._shape_supports_text(shape):
                     return shape
         return None
 
@@ -1369,6 +1451,32 @@ class PowerPointService(OfficeService):
         if line_transparency is not None:
             shape.Line.Transparency = line_transparency
 
+    def _apply_two_color_gradient(
+        self,
+        fill: object,
+        *,
+        start_color: str,
+        end_color: str,
+        style: str,
+        variant: int,
+    ) -> None:
+        from win32com.client import constants
+
+        fill.Visible = -1
+        with suppress(Exception):
+            fill.ForeColor.RGB = parse_office_color(start_color)
+        with suppress(Exception):
+            fill.BackColor.RGB = parse_office_color(end_color)
+        fill.TwoColorGradient(
+            self._resolve_office_constant(constants, style, GRADIENT_STYLES),
+            variant,
+        )
+
+    def _get_text_gradient_fill(self, shape: object) -> object:
+        with suppress(Exception):
+            return shape.TextFrame2.TextRange.Font.Fill
+        raise ValueError("The selected shape does not support gradient text formatting")
+
     def _estimate_table_row_height(self, row_values: list[str], font_size: float = 14.0) -> float:
         max_lines = 1
         max_chars = 0
@@ -1590,6 +1698,351 @@ class PowerPointService(OfficeService):
 
         return "built_in", resolve_slide_layout(layout)
 
+    def _get_design(self, presentation: object, master_index: int) -> object:
+        designs = presentation.Designs
+        design_count = int(designs.Count)
+        if not 1 <= master_index <= design_count:
+            raise ValueError(f"The presentation does not contain master_index={master_index}")
+        return designs(master_index)
+
+    def _get_design_theme_name(self, design: object) -> str | None:
+        with suppress(Exception):
+            return str(design.Name).strip() or None
+        with suppress(Exception):
+            return str(design.SlideMaster.Theme.Name).strip() or None
+        return None
+
+    def _extract_master_summary(self, design_index: int, design: object) -> MasterSummary:
+        master_name = None
+        layout_count = 0
+        with suppress(Exception):
+            master_name = str(design.SlideMaster.Name).strip() or None
+        with suppress(Exception):
+            layout_count = int(design.SlideMaster.CustomLayouts.Count)
+        return MasterSummary(
+            master_index=design_index,
+            master_name=master_name,
+            theme_name=self._get_design_theme_name(design),
+            layout_count=layout_count,
+        )
+
+    def _iter_master_layouts(self, design_index: int, design: object) -> Iterator[LayoutSummary]:
+        master_name = None
+        with suppress(Exception):
+            master_name = str(design.SlideMaster.Name).strip() or None
+
+        custom_layouts = design.SlideMaster.CustomLayouts
+        for layout_index in range(1, int(custom_layouts.Count) + 1):
+            layout = custom_layouts(layout_index)
+            layout_name = None
+            with suppress(Exception):
+                layout_name = str(layout.Name).strip() or None
+            yield LayoutSummary(
+                layout_index=int(layout.Index),
+                layout_name=layout_name,
+                design_index=design_index,
+                master_name=master_name,
+            )
+
+    def _get_design_variants(self, design: object) -> object | None:
+        with suppress(Exception):
+            return design.ThemeVariants
+        with suppress(Exception):
+            return design.Variants
+        with suppress(Exception):
+            return design.SlideMaster.Theme.ThemeVariants
+        return None
+
+    def _iter_theme_variants(self, design: object) -> Iterator[ThemeVariantSummary]:
+        variants = self._get_design_variants(design)
+        if variants is None:
+            return
+
+        for variant_index in range(1, int(variants.Count) + 1):
+            variant = variants(variant_index)
+            name = None
+            color_scheme_name = None
+            font_scheme_name = None
+            with suppress(Exception):
+                name = str(variant.Name).strip() or None
+            with suppress(Exception):
+                color_scheme_name = str(variant.ColorScheme.Name).strip() or None
+            with suppress(Exception):
+                font_scheme_name = str(variant.FontScheme.Name).strip() or None
+            yield ThemeVariantSummary(
+                variant_index=variant_index,
+                name=name,
+                color_scheme_name=color_scheme_name,
+                font_scheme_name=font_scheme_name,
+            )
+
+    def _extract_master_background_color(self, master: object) -> str | None:
+        with suppress(Exception):
+            return office_color_to_hex(int(master.Background.Fill.ForeColor.RGB))
+        return None
+
+    def _extract_theme_fonts(self, design: object) -> dict[str, object]:
+        fonts: dict[str, object] = {
+            "title_font_name": None,
+            "title_font_size": None,
+            "body_font_name": None,
+            "body_font_size": None,
+        }
+
+        with suppress(Exception):
+            from win32com.client import constants
+
+            font_scheme = design.SlideMaster.Theme.ThemeFontScheme
+            for label, constant_name in THEME_FONT_LANGUAGE_CONSTANTS.items():
+                constant_value = getattr(constants, constant_name)
+                with suppress(Exception):
+                    fonts[f"major_{label}"] = str(font_scheme.MajorFont(constant_value).Name).strip() or None
+                with suppress(Exception):
+                    fonts[f"minor_{label}"] = str(font_scheme.MinorFont(constant_value).Name).strip() or None
+
+        containers = [design.SlideMaster]
+        custom_layouts = design.SlideMaster.CustomLayouts
+        for layout_index in range(1, int(custom_layouts.Count) + 1):
+            containers.append(custom_layouts(layout_index))
+
+        for container in containers:
+            for _, shape in self._iter_shapes(container):
+                if not self._shape_supports_text(shape):
+                    continue
+                with suppress(Exception):
+                    font = self._get_text_range(shape).Font
+                    font_name = str(font.Name).strip() or None
+                    font_size = float(font.Size) if getattr(font, "Size", None) else None
+                    if self._shape_is_title_placeholder(shape):
+                        if fonts["title_font_name"] is None and font_name is not None:
+                            fonts["title_font_name"] = font_name
+                        if fonts["title_font_size"] is None and font_size is not None:
+                            fonts["title_font_size"] = font_size
+                    else:
+                        if fonts["body_font_name"] is None and font_name is not None:
+                            fonts["body_font_name"] = font_name
+                        if fonts["body_font_size"] is None and font_size is not None:
+                            fonts["body_font_size"] = font_size
+                if fonts["title_font_name"] is not None and fonts["body_font_name"] is not None:
+                    return fonts
+
+        return fonts
+
+    def _extract_theme_colors(self, design: object, background_color: str | None) -> dict[str, object]:
+        colors: dict[str, object] = {
+            "background_color": background_color,
+            "title_text_color": None,
+            "body_text_color": None,
+            "accent_color": None,
+        }
+
+        with suppress(Exception):
+            from win32com.client import constants
+
+            scheme = design.SlideMaster.Theme.ThemeColorScheme
+            for key, constant_name in THEME_COLOR_CONSTANTS.items():
+                with suppress(Exception):
+                    colors[key] = office_color_to_hex(int(scheme(getattr(constants, constant_name)).RGB))
+
+        containers = [design.SlideMaster]
+        custom_layouts = design.SlideMaster.CustomLayouts
+        for layout_index in range(1, int(custom_layouts.Count) + 1):
+            containers.append(custom_layouts(layout_index))
+
+        for container in containers:
+            for _, shape in self._iter_shapes(container):
+                if self._shape_supports_text(shape):
+                    with suppress(Exception):
+                        font = self._get_text_range(shape).Font
+                        font_color = office_color_to_hex(int(font.Color.RGB))
+                        if self._shape_is_title_placeholder(shape):
+                            if colors["title_text_color"] is None and font_color is not None:
+                                colors["title_text_color"] = font_color
+                        elif colors["body_text_color"] is None and font_color is not None:
+                            colors["body_text_color"] = font_color
+                if colors["accent_color"] is None:
+                    with suppress(Exception):
+                        colors["accent_color"] = office_color_to_hex(int(shape.Fill.ForeColor.RGB))
+
+        return colors
+
+    def _build_master_theme_summary(self, design_index: int, design: object) -> MasterThemeSummary:
+        master = design.SlideMaster
+        background_color = self._extract_master_background_color(master)
+        placeholders = [
+            summary
+            for index, shape in self._iter_shapes(master)
+            if (summary := self._extract_placeholder_summary(shape, index)) is not None
+        ]
+        return MasterThemeSummary(
+            master_index=design_index,
+            master_name=self._extract_master_summary(design_index, design).master_name,
+            theme_name=self._get_design_theme_name(design),
+            background_color=background_color,
+            fonts=self._extract_theme_fonts(design),
+            colors=self._extract_theme_colors(design, background_color),
+            layouts=list(self._iter_master_layouts(design_index, design)),
+            placeholders=placeholders,
+            variants=list(self._iter_theme_variants(design)),
+        )
+
+    def _candidate_builtin_theme_dirs(self) -> list[Path]:
+        candidates: list[Path] = []
+        for env_name in ("ProgramFiles", "ProgramFiles(x86)"):
+            root = Path(__import__("os").environ.get(env_name, "")).expanduser()
+            if not str(root):
+                continue
+            candidates.extend(
+                [
+                    root / "Microsoft Office" / "root" / "Document Themes 16",
+                    root / "Microsoft Office" / "Document Themes 16",
+                    root / "Microsoft Office" / "root" / "Document Themes",
+                ]
+            )
+
+        for env_name in ("APPDATA", "LOCALAPPDATA"):
+            root = Path(__import__("os").environ.get(env_name, "")).expanduser()
+            if not str(root):
+                continue
+            candidates.append(root / "Microsoft" / "Templates" / "Document Themes")
+
+        unique_candidates: list[Path] = []
+        seen: set[str] = set()
+        for candidate in candidates:
+            resolved = str(candidate)
+            if resolved in seen:
+                continue
+            seen.add(resolved)
+            unique_candidates.append(candidate)
+        return unique_candidates
+
+    def _iter_builtin_theme_paths(self) -> Iterator[Path]:
+        seen: set[Path] = set()
+        for directory in self._candidate_builtin_theme_dirs():
+            if not directory.exists():
+                continue
+            with suppress(Exception):
+                for theme_path in directory.rglob("*.thmx"):
+                    resolved = theme_path.resolve()
+                    if resolved in seen:
+                        continue
+                    seen.add(resolved)
+                    yield resolved
+
+    def _resolve_builtin_theme_path(self, theme_name: str) -> Path:
+        requested = normalize_powerpoint_token(Path(theme_name).stem)
+        exact_matches: list[Path] = []
+        partial_matches: list[Path] = []
+
+        for theme_path in self._iter_builtin_theme_paths():
+            stem = normalize_powerpoint_token(theme_path.stem)
+            if stem == requested:
+                exact_matches.append(theme_path)
+            elif requested in stem:
+                partial_matches.append(theme_path)
+
+        matches = exact_matches or partial_matches
+        if not matches:
+            raise ValueError(f"Built-in PowerPoint theme not found: {theme_name}")
+        if len(matches) > 1:
+            sample = ", ".join(sorted(path.stem for path in matches[:6]))
+            raise ValueError(f"Theme name '{theme_name}' is ambiguous. Matches: {sample}")
+        return matches[0]
+
+    def _resolve_placeholder_shape(
+        self,
+        slide: object,
+        *,
+        shape_index: int | None,
+        shape_name: str | None,
+        placeholder_type: int | None,
+        placeholder_occurrence: int,
+    ) -> tuple[int, object]:
+        if shape_index is not None:
+            shape = self._get_shape(slide, shape_index)
+            if self._get_placeholder_type(shape) is None:
+                raise ValueError(f"shape_index={shape_index} is not a placeholder")
+            return shape_index, shape
+
+        if shape_name is not None:
+            target = normalize_powerpoint_token(shape_name)
+            for index, shape in self._iter_shapes(slide):
+                with suppress(Exception):
+                    if normalize_powerpoint_token(str(shape.Name)) == target and self._get_placeholder_type(shape) is not None:
+                        return index, shape
+            raise ValueError(f"No placeholder found with shape_name='{shape_name}'")
+
+        matches: list[tuple[int, object]] = []
+        for index, shape in self._iter_shapes(slide):
+            if self._get_placeholder_type(shape) == placeholder_type:
+                matches.append((index, shape))
+
+        if len(matches) < placeholder_occurrence:
+            raise ValueError(
+                f"No placeholder found for placeholder_type={placeholder_type} occurrence={placeholder_occurrence}"
+            )
+        return matches[placeholder_occurrence - 1]
+
+    def _set_theme_scheme_color(self, design: object, constant_name: str, color: str) -> None:
+        with suppress(Exception):
+            from win32com.client import constants
+
+            scheme = design.SlideMaster.Theme.ThemeColorScheme
+            scheme(getattr(constants, constant_name)).RGB = parse_office_color(color)
+
+    def _iter_master_text_shapes(self, design: object) -> Iterator[object]:
+        containers = [design.SlideMaster]
+        custom_layouts = design.SlideMaster.CustomLayouts
+        for layout_index in range(1, int(custom_layouts.Count) + 1):
+            containers.append(custom_layouts(layout_index))
+
+        for container in containers:
+            for _, shape in self._iter_shapes(container):
+                if self._shape_supports_text(shape):
+                    yield shape
+
+    def _apply_style_preset_to_slide(self, slide: object, preset: str) -> tuple[str | None, str | None]:
+        style = resolve_style_preset(preset)
+        slide.FollowMasterBackground = 0
+        slide.Background.Fill.Visible = -1
+        slide.Background.Fill.Solid()
+        slide.Background.Fill.ForeColor.RGB = parse_office_color(str(style["background"]))
+
+        transition = slide.SlideShowTransition
+        transition.EntryEffect = int(TRANSITION_EFFECTS[str(style["transition_effect"])])
+        transition.Speed = int(TRANSITION_SPEEDS[str(style["transition_speed"])])
+
+        title_shape = self._find_title_shape(slide)
+        body_shape = self._find_primary_body_shape(slide)
+        title_shape_name = None
+        body_shape_name = None
+
+        if title_shape is not None:
+            title_shape_name = str(title_shape.Name)
+            title_shape.Fill.Visible = -1
+            title_shape.Fill.Solid()
+            title_shape.Fill.ForeColor.RGB = parse_office_color(str(style["title_fill"]))
+            title_shape.Line.Visible = -1
+            title_shape.Line.ForeColor.RGB = parse_office_color(str(style["title_line"]))
+
+            title_text = self._get_text_range(title_shape)
+            title_font = title_text.Font
+            title_font.Color.RGB = parse_office_color(str(style["title_text_color"]))
+            title_font.Name = str(style["title_font_name"])
+            title_font.Size = float(style["title_font_size"])
+            title_font.Bold = -1 if bool(style["title_bold"]) else 0
+
+        if body_shape is not None:
+            body_shape_name = str(body_shape.Name)
+            body_text = self._get_text_range(body_shape)
+            body_font = body_text.Font
+            body_font.Color.RGB = parse_office_color(str(style["body_text_color"]))
+            body_font.Name = str(style["body_font_name"])
+            body_font.Size = float(style["body_font_size"])
+            body_text.ParagraphFormat.Alignment = int(TEXT_ALIGNMENTS[str(style["body_alignment"])])
+
+        return title_shape_name, body_shape_name
+
     def _replace_text_in_shapes(self, slide: object, find_text: str, replace_text: str) -> tuple[int, list[int]]:
         replacement_count = 0
         updated_shapes: list[int] = []
@@ -1755,6 +2208,62 @@ class PowerPointService(OfficeService):
             file_path=str(source),
             details={"out_path": str(target)},
         )
+
+    @retry(stop=stop_after_attempt(3), wait=wait_fixed(1), reraise=True)
+    def create_presentation(
+        self,
+        path: str,
+        layout: str,
+        title: str | None,
+        body_text: str | None,
+    ) -> OperationResult:
+        target = self.resolve_output_path(path, allowed_suffixes=self.allowed_suffixes)
+        if target.exists():
+            raise ValueError(f"Target PowerPoint file already exists: {target}")
+
+        with office_application("PowerPoint.Application", visible=self.settings.office_visible) as powerpoint:
+            presentation = None
+            try:
+                presentation = powerpoint.Presentations.Add(WithWindow=self.settings.office_visible)
+                slide = None
+
+                if int(presentation.Slides.Count) < 1:
+                    slide = presentation.Slides.Add(1, resolve_slide_layout("blank"))
+                else:
+                    slide = presentation.Slides(1)
+
+                layout_kind, target_layout = self._resolve_slide_layout_target(presentation, layout)
+                if layout_kind == "custom":
+                    slide.CustomLayout = target_layout
+                else:
+                    slide.Layout = int(target_layout)
+
+                if title:
+                    self._set_title_text(slide, title)
+                if body_text:
+                    self._set_body_text(slide, body_text)
+
+                presentation.SaveAs(str(target))
+
+                slide_id = None
+                with suppress(Exception):
+                    slide_id = int(slide.SlideID)
+
+                return OperationResult(
+                    message="PowerPoint presentation created",
+                    file_path=str(target),
+                    details={
+                        "slide_count": int(presentation.Slides.Count),
+                        "layout": layout,
+                        "layout_kind": layout_kind,
+                        "slide_index": int(slide.SlideIndex),
+                        "slide_id": slide_id,
+                    },
+                )
+            finally:
+                if presentation is not None:
+                    with suppress(Exception):
+                        presentation.Close()
 
     @retry(stop=stop_after_attempt(3), wait=wait_fixed(1), reraise=True)
     def duplicate_slide(self, path: str, slide_index: int, create_backup: bool) -> OperationResult:
@@ -1958,6 +2467,28 @@ class PowerPointService(OfficeService):
             )
 
     @retry(stop=stop_after_attempt(3), wait=wait_fixed(1), reraise=True)
+    def list_masters(self, path: str) -> PresentationMastersResult:
+        source = self.resolve_document_path(path)
+
+        with self._open_presentation(source, read_only=True) as presentation:
+            masters = [
+                self._extract_master_summary(design_index, presentation.Designs(design_index))
+                for design_index in range(1, int(presentation.Designs.Count) + 1)
+            ]
+            return PresentationMastersResult(file_path=str(source), masters=masters)
+
+    @retry(stop=stop_after_attempt(3), wait=wait_fixed(1), reraise=True)
+    def get_master_details(self, path: str, master_index: int) -> MasterDetailsResult:
+        source = self.resolve_document_path(path)
+
+        with self._open_presentation(source, read_only=True) as presentation:
+            design = self._get_design(presentation, master_index)
+            return MasterDetailsResult(
+                file_path=str(source),
+                master=self._build_master_theme_summary(master_index, design),
+            )
+
+    @retry(stop=stop_after_attempt(3), wait=wait_fixed(1), reraise=True)
     def list_layouts(self, path: str) -> PresentationLayoutsResult:
         source = self.resolve_document_path(path)
 
@@ -2037,30 +2568,185 @@ class PowerPointService(OfficeService):
 
         with self._open_presentation(source, read_only=True) as presentation:
             slide = presentation.Slides(slide_index)
-            placeholders: list[PlaceholderSummary] = []
-            for index, shape in self._iter_shapes(slide):
-                placeholder_type = None
-                with suppress(Exception):
-                    placeholder_type = int(shape.PlaceholderFormat.Type)
-                if placeholder_type is None:
-                    continue
-
-                shape_summary = self._shape_summary(shape, index)
-                placeholders.append(
-                    PlaceholderSummary(
-                        shape_index=index,
-                        name=shape_summary.name,
-                        placeholder_type=placeholder_type,
-                        has_text=shape_summary.has_text,
-                        text_preview=shape_summary.text_preview,
-                        left=shape_summary.left,
-                        top=shape_summary.top,
-                        width=shape_summary.width,
-                        height=shape_summary.height,
-                    )
-                )
+            placeholders = [
+                summary
+                for index, shape in self._iter_shapes(slide)
+                if (summary := self._extract_placeholder_summary(shape, index)) is not None
+            ]
 
             return SlidePlaceholdersResult(file_path=str(source), slide_index=slide_index, placeholders=placeholders)
+
+    @retry(stop=stop_after_attempt(3), wait=wait_fixed(1), reraise=True)
+    def fill_placeholder(
+        self,
+        path: str,
+        slide_index: int,
+        shape_index: int | None,
+        shape_name: str | None,
+        placeholder_type: int | None,
+        placeholder_occurrence: int,
+        text: str,
+        text_color: str | None,
+        font_name: str | None,
+        font_size: float | None,
+        create_backup: bool,
+    ) -> OperationResult:
+        source = self.resolve_document_path(path)
+        backup_path = self.maybe_create_backup(source, create_backup)
+
+        with self._open_presentation(source, read_only=False) as presentation:
+            slide = presentation.Slides(slide_index)
+            resolved_index, shape = self._resolve_placeholder_shape(
+                slide,
+                shape_index=shape_index,
+                shape_name=shape_name,
+                placeholder_type=placeholder_type,
+                placeholder_occurrence=placeholder_occurrence,
+            )
+            self._apply_shape_text_format(shape, text, text_color, font_name, font_size)
+            presentation.Save()
+            return OperationResult(
+                message="PowerPoint placeholder filled",
+                file_path=str(source),
+                backup_path=backup_path,
+                details={
+                    "slide_index": slide_index,
+                    "shape_index": resolved_index,
+                    "shape_name": str(shape.Name),
+                    "placeholder_type": self._get_placeholder_type(shape),
+                },
+            )
+
+    @retry(stop=stop_after_attempt(3), wait=wait_fixed(1), reraise=True)
+    def replace_placeholder_with_shape(
+        self,
+        path: str,
+        slide_index: int,
+        shape_index: int | None,
+        shape_name: str | None,
+        placeholder_type: int | None,
+        placeholder_occurrence: int,
+        replacement_kind: str,
+        text: str | None,
+        image_path: str | None,
+        shape_type: str,
+        fill_color: str | None,
+        line_color: str | None,
+        text_color: str | None,
+        font_name: str | None,
+        font_size: float | None,
+        create_backup: bool,
+    ) -> OperationResult:
+        source = self.resolve_document_path(path)
+        backup_path = self.maybe_create_backup(source, create_backup)
+        normalized_kind = normalize_powerpoint_token(replacement_kind)
+
+        image = None
+        if normalized_kind == "image":
+            image = validate_file_path(
+                image_path or "",
+                allowed_roots=self.settings.allowed_roots,
+                allowed_suffixes=IMAGE_SUFFIXES,
+                must_exist=True,
+            )
+
+        with self._open_presentation(source, read_only=False) as presentation:
+            slide = presentation.Slides(slide_index)
+            resolved_index, placeholder = self._resolve_placeholder_shape(
+                slide,
+                shape_index=shape_index,
+                shape_name=shape_name,
+                placeholder_type=placeholder_type,
+                placeholder_occurrence=placeholder_occurrence,
+            )
+            previous_name = str(placeholder.Name)
+            previous_text = None
+            with suppress(Exception):
+                previous_text = str(self._get_text_range(placeholder).Text).strip() or None
+
+            left = float(placeholder.Left)
+            top = float(placeholder.Top)
+            width = float(placeholder.Width)
+            height = float(placeholder.Height)
+            placeholder.Delete()
+
+            if normalized_kind in {"textbox", "text"}:
+                new_shape = slide.Shapes.AddTextbox(1, left, top, width, height)
+                replacement_text = text if text is not None else previous_text or ""
+                self._apply_shape_text_format(new_shape, replacement_text, text_color, font_name, font_size)
+                self._apply_shape_fill_and_line(
+                    new_shape,
+                    fill_color=fill_color,
+                    fill_transparency=None,
+                    line_color=line_color,
+                    line_weight=None,
+                    line_transparency=None,
+                    line_visible=None,
+                )
+            elif normalized_kind == "image":
+                new_shape = slide.Shapes.AddPicture(str(image), False, True, left, top, width, height)
+            else:
+                new_shape = slide.Shapes.AddShape(resolve_shape_type(shape_type), left, top, width, height)
+                self._apply_shape_fill_and_line(
+                    new_shape,
+                    fill_color=fill_color,
+                    fill_transparency=None,
+                    line_color=line_color,
+                    line_weight=None,
+                    line_transparency=None,
+                    line_visible=None,
+                )
+                replacement_text = text if text is not None else previous_text
+                if replacement_text is not None and self._shape_supports_text(new_shape):
+                    self._apply_shape_text_format(new_shape, replacement_text, text_color, font_name, font_size)
+
+            with suppress(Exception):
+                new_shape.Name = f"{previous_name}_content"
+
+            presentation.Save()
+            return OperationResult(
+                message="PowerPoint placeholder replaced with shape",
+                file_path=str(source),
+                backup_path=backup_path,
+                details={
+                    "slide_index": slide_index,
+                    "placeholder_shape_index": resolved_index,
+                    "previous_shape_name": previous_name,
+                    "replacement_kind": normalized_kind,
+                    "shape_name": str(new_shape.Name),
+                },
+            )
+
+    @retry(stop=stop_after_attempt(3), wait=wait_fixed(1), reraise=True)
+    def restore_placeholder(self, path: str, slide_index: int, create_backup: bool) -> OperationResult:
+        source = self.resolve_document_path(path)
+        backup_path = self.maybe_create_backup(source, create_backup)
+
+        with self._open_presentation(source, read_only=False) as presentation:
+            slide = presentation.Slides(slide_index)
+            before = [
+                summary
+                for index, shape in self._iter_shapes(slide)
+                if (summary := self._extract_placeholder_summary(shape, index)) is not None
+            ]
+            slide.Reset()
+            after = [
+                summary
+                for index, shape in self._iter_shapes(slide)
+                if (summary := self._extract_placeholder_summary(shape, index)) is not None
+            ]
+            presentation.Save()
+            return OperationResult(
+                message="PowerPoint slide placeholders restored",
+                file_path=str(source),
+                backup_path=backup_path,
+                details={
+                    "slide_index": slide_index,
+                    "placeholder_count_before": len(before),
+                    "placeholder_count_after": len(after),
+                    "restored_placeholder_count": max(len(after) - len(before), 0),
+                },
+            )
 
     @retry(stop=stop_after_attempt(3), wait=wait_fixed(1), reraise=True)
     def find_text(self, path: str, query: str) -> PresentationTextSearchResult:
@@ -2872,47 +3558,10 @@ class PowerPointService(OfficeService):
     def apply_style_preset(self, path: str, slide_index: int, preset: str, create_backup: bool) -> OperationResult:
         source = self.resolve_document_path(path)
         backup_path = self.maybe_create_backup(source, create_backup)
-        style = resolve_style_preset(preset)
 
         with self._open_presentation(source, read_only=False) as presentation:
             slide = presentation.Slides(slide_index)
-            slide.FollowMasterBackground = 0
-            slide.Background.Fill.Visible = -1
-            slide.Background.Fill.Solid()
-            slide.Background.Fill.ForeColor.RGB = parse_office_color(str(style["background"]))
-
-            transition = slide.SlideShowTransition
-            transition.EntryEffect = int(TRANSITION_EFFECTS[str(style["transition_effect"])])
-            transition.Speed = int(TRANSITION_SPEEDS[str(style["transition_speed"])])
-
-            title_shape = self._find_title_shape(slide)
-            body_shape = self._find_primary_body_shape(slide)
-            title_shape_name = None
-            body_shape_name = None
-
-            if title_shape is not None:
-                title_shape_name = str(title_shape.Name)
-                title_shape.Fill.Visible = -1
-                title_shape.Fill.Solid()
-                title_shape.Fill.ForeColor.RGB = parse_office_color(str(style["title_fill"]))
-                title_shape.Line.Visible = -1
-                title_shape.Line.ForeColor.RGB = parse_office_color(str(style["title_line"]))
-
-                title_text = self._get_text_range(title_shape)
-                title_font = title_text.Font
-                title_font.Color.RGB = parse_office_color(str(style["title_text_color"]))
-                title_font.Name = str(style["title_font_name"])
-                title_font.Size = float(style["title_font_size"])
-                title_font.Bold = -1 if bool(style["title_bold"]) else 0
-
-            if body_shape is not None:
-                body_shape_name = str(body_shape.Name)
-                body_text = self._get_text_range(body_shape)
-                body_font = body_text.Font
-                body_font.Color.RGB = parse_office_color(str(style["body_text_color"]))
-                body_font.Name = str(style["body_font_name"])
-                body_font.Size = float(style["body_font_size"])
-                body_text.ParagraphFormat.Alignment = int(TEXT_ALIGNMENTS[str(style["body_alignment"])])
+            title_shape_name, body_shape_name = self._apply_style_preset_to_slide(slide, preset)
 
             presentation.Save()
             return OperationResult(
@@ -6136,6 +6785,310 @@ class PowerPointService(OfficeService):
             )
 
     @retry(stop=stop_after_attempt(3), wait=wait_fixed(1), reraise=True)
+    def apply_builtin_theme(self, path: str, theme_name: str, create_backup: bool) -> OperationResult:
+        source = self.resolve_document_path(path)
+        theme_path = self._resolve_builtin_theme_path(theme_name)
+        backup_path = self.maybe_create_backup(source, create_backup)
+
+        with self._open_presentation(source, read_only=False) as presentation:
+            presentation.ApplyTheme(str(theme_path))
+            presentation.Save()
+            return OperationResult(
+                message="PowerPoint built-in theme applied",
+                file_path=str(source),
+                backup_path=backup_path,
+                details={
+                    "theme_name": theme_name,
+                    "theme_path": str(theme_path),
+                },
+            )
+
+    @retry(stop=stop_after_attempt(3), wait=wait_fixed(1), reraise=True)
+    def apply_design_ideas(
+        self,
+        path: str,
+        slide_index: int | None,
+        fallback_preset: str | None,
+        create_backup: bool,
+    ) -> OperationResult:
+        source = self.resolve_document_path(path)
+        backup_path = self.maybe_create_backup(source, create_backup)
+        invoked_command = None
+        applied_slides: list[int] = []
+
+        with self._open_presentation_session(source, read_only=False, visible=True, with_window=True) as (powerpoint, presentation):
+            if slide_index is not None:
+                with suppress(Exception):
+                    presentation.Windows(1).View.GotoSlide(slide_index)
+
+            for command_name in DESIGN_IDEAS_COMMANDS:
+                with suppress(Exception):
+                    powerpoint.CommandBars.ExecuteMso(command_name)
+                    invoked_command = command_name
+                    break
+
+            if fallback_preset is not None:
+                if slide_index is None:
+                    for current_index in range(1, int(presentation.Slides.Count) + 1):
+                        self._apply_style_preset_to_slide(presentation.Slides(current_index), fallback_preset)
+                        applied_slides.append(current_index)
+                else:
+                    self._apply_style_preset_to_slide(presentation.Slides(slide_index), fallback_preset)
+                    applied_slides.append(slide_index)
+                presentation.Save()
+
+            return OperationResult(
+                message="PowerPoint design ideas workflow executed",
+                file_path=str(source),
+                backup_path=backup_path,
+                details={
+                    "slide_index": slide_index,
+                    "designer_command": invoked_command,
+                    "fallback_preset": fallback_preset,
+                    "applied_slide_indexes": applied_slides,
+                    "manual_review_recommended": invoked_command is not None,
+                },
+            )
+
+    @retry(stop=stop_after_attempt(3), wait=wait_fixed(1), reraise=True)
+    def apply_theme_variant(self, path: str, master_index: int, variant: str, create_backup: bool) -> OperationResult:
+        source = self.resolve_document_path(path)
+        backup_path = self.maybe_create_backup(source, create_backup)
+        normalized_variant = normalize_powerpoint_token(variant)
+
+        with self._open_presentation(source, read_only=False) as presentation:
+            design = self._get_design(presentation, master_index)
+            target_variant = None
+            target_variant_index = None
+            target_variant_name = None
+
+            variants = list(self._iter_theme_variants(design))
+            variant_collection = self._get_design_variants(design)
+            if variant_collection is not None:
+                for item in variants:
+                    candidate_name = normalize_powerpoint_token(item.name or "") if item.name else None
+                    if normalized_variant.isdigit() and item.variant_index == int(normalized_variant):
+                        target_variant = variant_collection(item.variant_index)
+                        target_variant_index = item.variant_index
+                        target_variant_name = item.name
+                        break
+                    if candidate_name and candidate_name == normalized_variant:
+                        target_variant = variant_collection(item.variant_index)
+                        target_variant_index = item.variant_index
+                        target_variant_name = item.name
+                        break
+
+            applied_via = None
+            if target_variant is not None:
+                for applier_name, applier in (
+                    ("presentation.ApplyThemeVariant", lambda: presentation.ApplyThemeVariant(target_variant)),
+                    ("design.ApplyThemeVariant", lambda: design.ApplyThemeVariant(target_variant)),
+                ):
+                    try:
+                        applier()
+                        applied_via = applier_name
+                        break
+                    except Exception:
+                        continue
+
+            if applied_via is None:
+                if normalized_variant in STYLE_PRESETS:
+                    for slide_position in range(1, int(presentation.Slides.Count) + 1):
+                        self._apply_style_preset_to_slide(presentation.Slides(slide_position), normalized_variant)
+                    applied_via = "style_preset_fallback"
+                    target_variant_name = normalized_variant
+                else:
+                    supported = ", ".join(sorted({normalize_powerpoint_token(item.name or "") for item in variants if item.name}))
+                    fallbacks = ", ".join(sorted(STYLE_PRESETS))
+                    raise ValueError(
+                        "Theme variant could not be applied via COM. "
+                        f"Available COM variants: {supported or 'none'}. Supported fallback presets: {fallbacks}"
+                    )
+
+            presentation.Save()
+            return OperationResult(
+                message="PowerPoint theme variant applied",
+                file_path=str(source),
+                backup_path=backup_path,
+                details={
+                    "master_index": master_index,
+                    "variant": variant,
+                    "variant_index": target_variant_index,
+                    "variant_name": target_variant_name,
+                    "applied_via": applied_via,
+                },
+            )
+
+    @retry(stop=stop_after_attempt(3), wait=wait_fixed(1), reraise=True)
+    def extract_theme(self, path: str, master_index: int | None = None) -> PresentationThemeResult:
+        source = self.resolve_document_path(path)
+
+        with self._open_presentation(source, read_only=True) as presentation:
+            if master_index is None:
+                masters = [
+                    self._build_master_theme_summary(index, presentation.Designs(index))
+                    for index in range(1, int(presentation.Designs.Count) + 1)
+                ]
+            else:
+                design = self._get_design(presentation, master_index)
+                masters = [self._build_master_theme_summary(master_index, design)]
+
+            theme_name = masters[0].theme_name if masters else None
+            return PresentationThemeResult(file_path=str(source), theme_name=theme_name, masters=masters)
+
+    @retry(stop=stop_after_attempt(3), wait=wait_fixed(1), reraise=True)
+    def set_master_background(self, path: str, master_index: int, color: str, create_backup: bool) -> OperationResult:
+        source = self.resolve_document_path(path)
+        backup_path = self.maybe_create_backup(source, create_backup)
+
+        with self._open_presentation(source, read_only=False) as presentation:
+            design = self._get_design(presentation, master_index)
+            master = design.SlideMaster
+            master.Background.Fill.Visible = -1
+            master.Background.Fill.Solid()
+            master.Background.Fill.ForeColor.RGB = parse_office_color(color)
+            self._set_theme_scheme_color(design, "msoThemeBackground1", color)
+            presentation.Save()
+            return OperationResult(
+                message="PowerPoint master background updated",
+                file_path=str(source),
+                backup_path=backup_path,
+                details={
+                    "master_index": master_index,
+                    "color": color,
+                },
+            )
+
+    @retry(stop=stop_after_attempt(3), wait=wait_fixed(1), reraise=True)
+    def set_master_fonts(
+        self,
+        path: str,
+        master_index: int,
+        title_font_name: str | None,
+        title_font_size: float | None,
+        body_font_name: str | None,
+        body_font_size: float | None,
+        create_backup: bool,
+    ) -> OperationResult:
+        source = self.resolve_document_path(path)
+        backup_path = self.maybe_create_backup(source, create_backup)
+        updated_shape_count = 0
+
+        with self._open_presentation(source, read_only=False) as presentation:
+            design = self._get_design(presentation, master_index)
+            for shape in self._iter_master_text_shapes(design):
+                if self._shape_is_title_placeholder(shape):
+                    if title_font_name is None and title_font_size is None:
+                        continue
+                    self._apply_shape_text_format(shape, None, None, title_font_name, title_font_size)
+                    updated_shape_count += 1
+                else:
+                    if body_font_name is None and body_font_size is None:
+                        continue
+                    self._apply_shape_text_format(shape, None, None, body_font_name, body_font_size)
+                    updated_shape_count += 1
+
+            presentation.Save()
+            summary = self._build_master_theme_summary(master_index, design)
+            return OperationResult(
+                message="PowerPoint master fonts updated",
+                file_path=str(source),
+                backup_path=backup_path,
+                details={
+                    "master_index": master_index,
+                    "updated_shape_count": updated_shape_count,
+                    "title_font_name": summary.fonts.get("title_font_name"),
+                    "body_font_name": summary.fonts.get("body_font_name"),
+                },
+            )
+
+    @retry(stop=stop_after_attempt(3), wait=wait_fixed(1), reraise=True)
+    def set_master_colors(
+        self,
+        path: str,
+        master_index: int,
+        background_color: str | None,
+        title_text_color: str | None,
+        body_text_color: str | None,
+        accent_color: str | None,
+        create_backup: bool,
+    ) -> OperationResult:
+        source = self.resolve_document_path(path)
+        backup_path = self.maybe_create_backup(source, create_backup)
+        updated_shape_count = 0
+
+        with self._open_presentation(source, read_only=False) as presentation:
+            design = self._get_design(presentation, master_index)
+            master = design.SlideMaster
+
+            if background_color is not None:
+                master.Background.Fill.Visible = -1
+                master.Background.Fill.Solid()
+                master.Background.Fill.ForeColor.RGB = parse_office_color(background_color)
+                self._set_theme_scheme_color(design, "msoThemeBackground1", background_color)
+            if title_text_color is not None:
+                self._set_theme_scheme_color(design, "msoThemeText1", title_text_color)
+            if body_text_color is not None:
+                self._set_theme_scheme_color(design, "msoThemeText2", body_text_color)
+            if accent_color is not None:
+                self._set_theme_scheme_color(design, "msoThemeAccent1", accent_color)
+
+            for shape in self._iter_master_text_shapes(design):
+                if self._shape_is_title_placeholder(shape):
+                    if title_text_color is not None:
+                        self._apply_text_range_style(
+                            self._get_text_range(shape),
+                            text=None,
+                            font_name=None,
+                            font_size=None,
+                            bold=None,
+                            italic=None,
+                            underline=None,
+                            color=title_text_color,
+                            alignment=None,
+                        )
+                        updated_shape_count += 1
+                    if accent_color is not None:
+                        self._apply_shape_fill_and_line(
+                            shape,
+                            fill_color=accent_color,
+                            fill_transparency=None,
+                            line_color=accent_color,
+                            line_weight=None,
+                            line_transparency=None,
+                            line_visible=None,
+                        )
+                elif body_text_color is not None:
+                    self._apply_text_range_style(
+                        self._get_text_range(shape),
+                        text=None,
+                        font_name=None,
+                        font_size=None,
+                        bold=None,
+                        italic=None,
+                        underline=None,
+                        color=body_text_color,
+                        alignment=None,
+                    )
+                    updated_shape_count += 1
+
+            presentation.Save()
+            summary = self._build_master_theme_summary(master_index, design)
+            return OperationResult(
+                message="PowerPoint master colors updated",
+                file_path=str(source),
+                backup_path=backup_path,
+                details={
+                    "master_index": master_index,
+                    "updated_shape_count": updated_shape_count,
+                    "background_color": summary.background_color,
+                    "title_text_color": summary.colors.get("title_text_color"),
+                    "body_text_color": summary.colors.get("body_text_color"),
+                    "accent_color": summary.colors.get("accent_color"),
+                },
+            )
+
+    @retry(stop=stop_after_attempt(3), wait=wait_fixed(1), reraise=True)
     def set_slide_transition(
         self,
         path: str,
@@ -6241,6 +7194,54 @@ class PowerPointService(OfficeService):
                     "underline": underline,
                     "color": color,
                     "alignment": alignment,
+                },
+            )
+
+    @retry(stop=stop_after_attempt(3), wait=wait_fixed(1), reraise=True)
+    def set_text_gradient(
+        self,
+        path: str,
+        slide_index: int,
+        shape_index: int,
+        start_color: str,
+        end_color: str,
+        style: str,
+        variant: int,
+        text: str | None,
+        create_backup: bool,
+    ) -> OperationResult:
+        source = self.resolve_document_path(path)
+        backup_path = self.maybe_create_backup(source, create_backup)
+
+        with self._open_presentation(source, read_only=False) as presentation:
+            slide = presentation.Slides(slide_index)
+            shape = self._get_shape(slide, shape_index)
+            text_range = self._get_text_range(shape)
+            if text is not None:
+                text_range.Text = text
+
+            gradient_fill = self._get_text_gradient_fill(shape)
+            self._apply_two_color_gradient(
+                gradient_fill,
+                start_color=start_color,
+                end_color=end_color,
+                style=style,
+                variant=variant,
+            )
+
+            presentation.Save()
+            return OperationResult(
+                message="PowerPoint text gradient updated",
+                file_path=str(source),
+                backup_path=backup_path,
+                details={
+                    "slide_index": slide_index,
+                    "shape_index": shape_index,
+                    "start_color": start_color,
+                    "end_color": end_color,
+                    "style": normalize_powerpoint_token(style),
+                    "variant": variant,
+                    "text_updated": text is not None,
                 },
             )
 
@@ -6560,6 +7561,46 @@ class PowerPointService(OfficeService):
                     "slide_index": slide_index,
                     "color": color,
                     "follow_master": follow_master,
+                },
+            )
+
+    @retry(stop=stop_after_attempt(3), wait=wait_fixed(1), reraise=True)
+    def set_slide_background_gradient(
+        self,
+        path: str,
+        slide_index: int,
+        start_color: str,
+        end_color: str,
+        style: str,
+        variant: int,
+        create_backup: bool,
+    ) -> OperationResult:
+        source = self.resolve_document_path(path)
+        backup_path = self.maybe_create_backup(source, create_backup)
+
+        with self._open_presentation(source, read_only=False) as presentation:
+            slide = presentation.Slides(slide_index)
+            slide.FollowMasterBackground = 0
+            self._apply_two_color_gradient(
+                slide.Background.Fill,
+                start_color=start_color,
+                end_color=end_color,
+                style=style,
+                variant=variant,
+            )
+
+            presentation.Save()
+            return OperationResult(
+                message="PowerPoint slide background gradient updated",
+                file_path=str(source),
+                backup_path=backup_path,
+                details={
+                    "slide_index": slide_index,
+                    "start_color": start_color,
+                    "end_color": end_color,
+                    "style": normalize_powerpoint_token(style),
+                    "variant": variant,
+                    "follow_master": False,
                 },
             )
 

@@ -1,4 +1,4 @@
 [console_scripts]
-office-ai-mcp-word = office_ai_mcp.word_server:main
 office-ai-mcp-excel = office_ai_mcp.excel_server:main
 office-ai-mcp-powerpoint = office_ai_mcp.powerpoint_server:main
+office-ai-mcp-word = office_ai_mcp.word_server:main

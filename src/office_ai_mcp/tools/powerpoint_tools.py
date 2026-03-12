@@ -15,6 +15,8 @@ from office_ai_mcp.models.requests import (
     PowerPointAnimationRequest,
     PowerPointAutofitRequest,
     PowerPointBackgroundRequest,
+    PowerPointBackgroundGradientRequest,
+    PowerPointBuiltinThemeRequest,
     PowerPointBulletStyleRequest,
     PowerPointChartLayoutRequest,
     PowerPointChartAxisScaleRequest,
@@ -28,20 +30,29 @@ from office_ai_mcp.models.requests import (
     PowerPointChartTypeChangeRequest,
     PowerPointChartTitleRequest,
     PowerPointConnectShapesRequest,
+    PowerPointCreatePresentationRequest,
     PowerPointCropImageRequest,
+    PowerPointDesignIdeasRequest,
     PowerPointDocumentPropertiesRequest,
     PowerPointDeleteChartSeriesRequest,
     PowerPointExportSlideImagesRequest,
+    PowerPointFillPlaceholderRequest,
     PowerPointImageFormatRequest,
     PowerPointImageRequest,
     PowerPointInsertBulletsRequest,
     PowerPointMediaPlaybackRequest,
     PowerPointMediaRequest,
     PowerPointMediaTrimRequest,
+    PowerPointMasterBackgroundRequest,
+    PowerPointMasterColorsRequest,
+    PowerPointMasterFontsRequest,
+    PowerPointMasterRequest,
     PowerPointNotesRequest,
+    PowerPointOptionalMasterRequest,
     PowerPointParagraphSpacingRequest,
     PowerPointPresetRequest,
     PowerPointProofingLanguageRequest,
+    PowerPointReplacePlaceholderRequest,
     PowerPointReplaceImageRequest,
     PowerPointShapeAspectRatioRequest,
     PowerPointShapeCollectionRequest,
@@ -92,9 +103,11 @@ from office_ai_mcp.models.requests import (
     PowerPointTableSplitCellsRequest,
     PowerPointTableStyleRequest,
     PowerPointTextReplaceRequest,
+    PowerPointTextGradientRequest,
     PowerPointTextRangeStyleRequest,
     PowerPointTextStyleRequest,
     PowerPointThemeRequest,
+    PowerPointThemeVariantRequest,
     PowerPointTransitionRequest,
     ReplaceTextRequest,
     SaveAsRequest,
@@ -103,6 +116,30 @@ from office_ai_mcp.services.powerpoint_service import PowerPointService
 
 
 def register_powerpoint_tools(mcp: FastMCP, service: PowerPointService) -> None:
+    @mcp.tool(
+        name="ppt_create_presentation",
+        description="Create a new PowerPoint presentation file from scratch with an initial slide.",
+    )
+    def ppt_create_presentation(
+        path: str,
+        layout: str = "title",
+        title: str | None = None,
+        body_text: str | None = None,
+    ) -> dict[str, object]:
+        """Create a new PowerPoint presentation on disk."""
+        request = PowerPointCreatePresentationRequest(
+            path=path,
+            layout=layout,
+            title=title,
+            body_text=body_text,
+        )
+        return service.create_presentation(
+            path=request.path,
+            layout=request.layout,
+            title=request.title,
+            body_text=request.body_text,
+        ).model_dump()
+
     @mcp.tool(
         name="ppt_list_slides",
         description="List slides in a PowerPoint presentation with titles and shape counts.",
@@ -308,6 +345,24 @@ def register_powerpoint_tools(mcp: FastMCP, service: PowerPointService) -> None:
         return service.get_slide_summary_extended(path=request.path, slide_index=request.slide_index).model_dump()
 
     @mcp.tool(
+        name="ppt_list_masters",
+        description="List presentation slide masters and their associated theme names and layout counts.",
+    )
+    def ppt_list_masters(path: str) -> dict[str, object]:
+        """Enumerate the slide masters available in the presentation."""
+        request = DocumentPathRequest(path=path, create_backup=False)
+        return service.list_masters(path=request.path).model_dump()
+
+    @mcp.tool(
+        name="ppt_get_master_details",
+        description="Read one slide master with theme colors, fonts, layouts, placeholders, and variants.",
+    )
+    def ppt_get_master_details(path: str, master_index: int) -> dict[str, object]:
+        """Return detailed theme information for one slide master."""
+        request = PowerPointMasterRequest(path=path, master_index=master_index, create_backup=False)
+        return service.get_master_details(path=request.path, master_index=request.master_index).model_dump()
+
+    @mcp.tool(
         name="ppt_list_layouts",
         description="List the layouts available in the presentation across its slide masters.",
     )
@@ -350,6 +405,96 @@ def register_powerpoint_tools(mcp: FastMCP, service: PowerPointService) -> None:
         ).model_dump()
 
     @mcp.tool(
+        name="ppt_set_master_background",
+        description="Update the background color of a specific slide master.",
+    )
+    def ppt_set_master_background(
+        path: str,
+        master_index: int,
+        color: str,
+        create_backup: bool = True,
+    ) -> dict[str, object]:
+        """Set the background fill color on one slide master."""
+        request = PowerPointMasterBackgroundRequest(
+            path=path,
+            master_index=master_index,
+            color=color,
+            create_backup=create_backup,
+        )
+        return service.set_master_background(
+            path=request.path,
+            master_index=request.master_index,
+            color=request.color,
+            create_backup=request.create_backup,
+        ).model_dump()
+
+    @mcp.tool(
+        name="ppt_set_master_fonts",
+        description="Configure title and body fonts for a specific slide master and its layouts.",
+    )
+    def ppt_set_master_fonts(
+        path: str,
+        master_index: int,
+        title_font_name: str | None = None,
+        title_font_size: float | None = None,
+        body_font_name: str | None = None,
+        body_font_size: float | None = None,
+        create_backup: bool = True,
+    ) -> dict[str, object]:
+        """Update theme typography on one slide master."""
+        request = PowerPointMasterFontsRequest(
+            path=path,
+            master_index=master_index,
+            title_font_name=title_font_name,
+            title_font_size=title_font_size,
+            body_font_name=body_font_name,
+            body_font_size=body_font_size,
+            create_backup=create_backup,
+        )
+        return service.set_master_fonts(
+            path=request.path,
+            master_index=request.master_index,
+            title_font_name=request.title_font_name,
+            title_font_size=request.title_font_size,
+            body_font_name=request.body_font_name,
+            body_font_size=request.body_font_size,
+            create_backup=request.create_backup,
+        ).model_dump()
+
+    @mcp.tool(
+        name="ppt_set_master_colors",
+        description="Update the main color palette of a specific slide master.",
+    )
+    def ppt_set_master_colors(
+        path: str,
+        master_index: int,
+        background_color: str | None = None,
+        title_text_color: str | None = None,
+        body_text_color: str | None = None,
+        accent_color: str | None = None,
+        create_backup: bool = True,
+    ) -> dict[str, object]:
+        """Update background, title, body, and accent colors on one master."""
+        request = PowerPointMasterColorsRequest(
+            path=path,
+            master_index=master_index,
+            background_color=background_color,
+            title_text_color=title_text_color,
+            body_text_color=body_text_color,
+            accent_color=accent_color,
+            create_backup=create_backup,
+        )
+        return service.set_master_colors(
+            path=request.path,
+            master_index=request.master_index,
+            background_color=request.background_color,
+            title_text_color=request.title_text_color,
+            body_text_color=request.body_text_color,
+            accent_color=request.accent_color,
+            create_backup=request.create_backup,
+        ).model_dump()
+
+    @mcp.tool(
         name="ppt_reset_slide_to_layout",
         description="Reset a slide to its current layout, restoring placeholders where possible.",
     )
@@ -374,6 +519,128 @@ def register_powerpoint_tools(mcp: FastMCP, service: PowerPointService) -> None:
         """List placeholder shapes available on one slide."""
         request = PowerPointSlideRequest(path=path, slide_index=slide_index, create_backup=False)
         return service.list_placeholders(path=request.path, slide_index=request.slide_index).model_dump()
+
+    @mcp.tool(
+        name="ppt_fill_placeholder",
+        description="Fill a placeholder selected by shape index, name, or placeholder type.",
+    )
+    def ppt_fill_placeholder(
+        path: str,
+        slide_index: int,
+        text: str,
+        shape_index: int | None = None,
+        shape_name: str | None = None,
+        placeholder_type: int | None = None,
+        placeholder_occurrence: int = 1,
+        text_color: str | None = None,
+        font_name: str | None = None,
+        font_size: float | None = None,
+        create_backup: bool = True,
+    ) -> dict[str, object]:
+        """Write content into a placeholder and optionally style its text."""
+        request = PowerPointFillPlaceholderRequest(
+            path=path,
+            slide_index=slide_index,
+            text=text,
+            shape_index=shape_index,
+            shape_name=shape_name,
+            placeholder_type=placeholder_type,
+            placeholder_occurrence=placeholder_occurrence,
+            text_color=text_color,
+            font_name=font_name,
+            font_size=font_size,
+            create_backup=create_backup,
+        )
+        return service.fill_placeholder(
+            path=request.path,
+            slide_index=request.slide_index,
+            shape_index=request.shape_index,
+            shape_name=request.shape_name,
+            placeholder_type=request.placeholder_type,
+            placeholder_occurrence=request.placeholder_occurrence,
+            text=request.text,
+            text_color=request.text_color,
+            font_name=request.font_name,
+            font_size=request.font_size,
+            create_backup=request.create_backup,
+        ).model_dump()
+
+    @mcp.tool(
+        name="ppt_replace_placeholder_with_shape",
+        description="Replace a placeholder with a textbox, image, or shape while preserving its geometry.",
+    )
+    def ppt_replace_placeholder_with_shape(
+        path: str,
+        slide_index: int,
+        shape_index: int | None = None,
+        shape_name: str | None = None,
+        placeholder_type: int | None = None,
+        placeholder_occurrence: int = 1,
+        replacement_kind: str = "textbox",
+        text: str | None = None,
+        image_path: str | None = None,
+        shape_type: str = "rectangle",
+        fill_color: str | None = None,
+        line_color: str | None = None,
+        text_color: str | None = None,
+        font_name: str | None = None,
+        font_size: float | None = None,
+        create_backup: bool = True,
+    ) -> dict[str, object]:
+        """Swap one placeholder for a final content shape."""
+        request = PowerPointReplacePlaceholderRequest(
+            path=path,
+            slide_index=slide_index,
+            shape_index=shape_index,
+            shape_name=shape_name,
+            placeholder_type=placeholder_type,
+            placeholder_occurrence=placeholder_occurrence,
+            replacement_kind=replacement_kind,
+            text=text,
+            image_path=image_path,
+            shape_type=shape_type,
+            fill_color=fill_color,
+            line_color=line_color,
+            text_color=text_color,
+            font_name=font_name,
+            font_size=font_size,
+            create_backup=create_backup,
+        )
+        return service.replace_placeholder_with_shape(
+            path=request.path,
+            slide_index=request.slide_index,
+            shape_index=request.shape_index,
+            shape_name=request.shape_name,
+            placeholder_type=request.placeholder_type,
+            placeholder_occurrence=request.placeholder_occurrence,
+            replacement_kind=request.replacement_kind,
+            text=request.text,
+            image_path=request.image_path,
+            shape_type=request.shape_type,
+            fill_color=request.fill_color,
+            line_color=request.line_color,
+            text_color=request.text_color,
+            font_name=request.font_name,
+            font_size=request.font_size,
+            create_backup=request.create_backup,
+        ).model_dump()
+
+    @mcp.tool(
+        name="ppt_restore_placeholder",
+        description="Restore deleted placeholders on a slide by resetting it to its assigned layout.",
+    )
+    def ppt_restore_placeholder(
+        path: str,
+        slide_index: int,
+        create_backup: bool = True,
+    ) -> dict[str, object]:
+        """Restore missing placeholders on one slide."""
+        request = PowerPointSlideRequest(path=path, slide_index=slide_index, create_backup=create_backup)
+        return service.restore_placeholder(
+            path=request.path,
+            slide_index=request.slide_index,
+            create_backup=request.create_backup,
+        ).model_dump()
 
     @mcp.tool(
         name="ppt_find_text",
@@ -1573,6 +1840,45 @@ def register_powerpoint_tools(mcp: FastMCP, service: PowerPointService) -> None:
         ).model_dump()
 
     @mcp.tool(
+        name="ppt_set_text_gradient",
+        description="Apply a two-color gradient fill to the text of a shape.",
+    )
+    def ppt_set_text_gradient(
+        path: str,
+        slide_index: int,
+        shape_index: int,
+        start_color: str,
+        end_color: str,
+        style: str = "horizontal",
+        variant: int = 1,
+        text: str | None = None,
+        create_backup: bool = True,
+    ) -> dict[str, object]:
+        """Apply a gradient to shape text using PowerPoint's text fill engine."""
+        request = PowerPointTextGradientRequest(
+            path=path,
+            slide_index=slide_index,
+            shape_index=shape_index,
+            start_color=start_color,
+            end_color=end_color,
+            style=style,
+            variant=variant,
+            text=text,
+            create_backup=create_backup,
+        )
+        return service.set_text_gradient(
+            path=request.path,
+            slide_index=request.slide_index,
+            shape_index=request.shape_index,
+            start_color=request.start_color,
+            end_color=request.end_color,
+            style=request.style,
+            variant=request.variant,
+            text=request.text,
+            create_backup=request.create_backup,
+        ).model_dump()
+
+    @mcp.tool(
         name="ppt_set_shape_fill",
         description="Set the fill color and transparency of a shape on a slide.",
     )
@@ -1842,6 +2148,39 @@ def register_powerpoint_tools(mcp: FastMCP, service: PowerPointService) -> None:
             slide_index=request.slide_index,
             color=request.color,
             follow_master=request.follow_master,
+            create_backup=request.create_backup,
+        ).model_dump()
+
+    @mcp.tool(
+        name="ppt_set_slide_background_gradient",
+        description="Apply a two-color gradient to the background of a slide.",
+    )
+    def ppt_set_slide_background_gradient(
+        path: str,
+        slide_index: int,
+        start_color: str,
+        end_color: str,
+        style: str = "horizontal",
+        variant: int = 1,
+        create_backup: bool = True,
+    ) -> dict[str, object]:
+        """Set a slide background using a two-color gradient."""
+        request = PowerPointBackgroundGradientRequest(
+            path=path,
+            slide_index=slide_index,
+            start_color=start_color,
+            end_color=end_color,
+            style=style,
+            variant=variant,
+            create_backup=create_backup,
+        )
+        return service.set_slide_background_gradient(
+            path=request.path,
+            slide_index=request.slide_index,
+            start_color=request.start_color,
+            end_color=request.end_color,
+            style=request.style,
+            variant=request.variant,
             create_backup=request.create_backup,
         ).model_dump()
 
@@ -4010,6 +4349,76 @@ def register_powerpoint_tools(mcp: FastMCP, service: PowerPointService) -> None:
             theme_path=request.theme_path,
             create_backup=request.create_backup,
         ).model_dump()
+
+    @mcp.tool(
+        name="ppt_apply_builtin_theme",
+        description="Apply an installed PowerPoint built-in theme by name.",
+    )
+    def ppt_apply_builtin_theme(path: str, theme_name: str, create_backup: bool = True) -> dict[str, object]:
+        """Apply a PowerPoint built-in theme resolved from the local Office installation."""
+        request = PowerPointBuiltinThemeRequest(path=path, theme_name=theme_name, create_backup=create_backup)
+        return service.apply_builtin_theme(
+            path=request.path,
+            theme_name=request.theme_name,
+            create_backup=request.create_backup,
+        ).model_dump()
+
+    @mcp.tool(
+        name="ppt_apply_design_ideas",
+        description="Trigger PowerPoint Design Ideas and optionally apply a deterministic style-preset fallback.",
+    )
+    def ppt_apply_design_ideas(
+        path: str,
+        slide_index: int | None = None,
+        fallback_preset: str | None = "executive",
+        create_backup: bool = True,
+    ) -> dict[str, object]:
+        """Run the Design Ideas workflow with an automated fallback for non-interactive use."""
+        request = PowerPointDesignIdeasRequest(
+            path=path,
+            slide_index=slide_index,
+            fallback_preset=fallback_preset,
+            create_backup=create_backup,
+        )
+        return service.apply_design_ideas(
+            path=request.path,
+            slide_index=request.slide_index,
+            fallback_preset=request.fallback_preset,
+            create_backup=request.create_backup,
+        ).model_dump()
+
+    @mcp.tool(
+        name="ppt_apply_theme_variant",
+        description="Apply a theme variant for one slide master, with a style-preset fallback when COM does not expose variants.",
+    )
+    def ppt_apply_theme_variant(
+        path: str,
+        master_index: int,
+        variant: str,
+        create_backup: bool = True,
+    ) -> dict[str, object]:
+        """Apply a theme variant or a compatible visual fallback."""
+        request = PowerPointThemeVariantRequest(
+            path=path,
+            master_index=master_index,
+            variant=variant,
+            create_backup=create_backup,
+        )
+        return service.apply_theme_variant(
+            path=request.path,
+            master_index=request.master_index,
+            variant=request.variant,
+            create_backup=request.create_backup,
+        ).model_dump()
+
+    @mcp.tool(
+        name="ppt_extract_theme",
+        description="Summarize the active theme, masters, layouts, placeholders, fonts, and colors.",
+    )
+    def ppt_extract_theme(path: str, master_index: int | None = None) -> dict[str, object]:
+        """Export a theme summary for the whole presentation or one slide master."""
+        request = PowerPointOptionalMasterRequest(path=path, master_index=master_index, create_backup=False)
+        return service.extract_theme(path=request.path, master_index=request.master_index).model_dump()
 
     @mcp.tool(
         name="ppt_export_pdf",

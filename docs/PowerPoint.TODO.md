@@ -4,6 +4,8 @@ Cobertura funcional objetivo: inventario exhaustivo, por bloques, de las capacid
 
 ## 1. Gestión de presentaciones y archivos
 
+- [x] `ppt_create_presentation`
+  - Crear una presentación `.pptx` nueva desde cero.
 - `ppt_open_presentation`
   - Abrir una presentación explícitamente con opciones de solo lectura o reparación.
 - `ppt_close_presentation`
@@ -70,29 +72,33 @@ Cobertura funcional objetivo: inventario exhaustivo, por bloques, de las capacid
   - Cambiar el layout de una diapositiva existente.
 - [x] `ppt_get_slide_layout`
   - Consultar el layout actual.
-- `ppt_list_masters`
+- [x] `ppt_list_masters`
   - Listar patrones de diapositivas.
-- `ppt_get_master_details`
+- [x] `ppt_get_master_details`
   - Leer colores, fuentes, placeholders y layout del patrón.
-- `ppt_set_master_background`
+- [x] `ppt_set_master_background`
   - Cambiar fondo del patrón.
-- `ppt_set_master_fonts`
+- [x] `ppt_set_master_fonts`
   - Configurar tipografías del tema.
-- `ppt_set_master_colors`
+- [x] `ppt_set_master_colors`
   - Cambiar paleta del tema.
-- `ppt_apply_theme_variant`
+- [x] `ppt_apply_builtin_theme`
+  - Aplicar un tema o plantilla integrada de PowerPoint por su nombre.
+- [x] `ppt_apply_design_ideas`
+  - Ejecutar el Diseñador de PowerPoint (Design Ideas) para mejorar la estética automáticamente.
+- [x] `ppt_apply_theme_variant`
   - Aplicar variantes del tema activo.
-- `ppt_extract_theme`
+- [x] `ppt_extract_theme`
   - Exportar o resumir el tema activo.
 - [x] `ppt_reset_slide_to_layout`
   - Restablecer una slide a su layout original.
 - [x] `ppt_list_placeholders`
   - Enumerar placeholders de una slide o layout.
-- `ppt_fill_placeholder`
+- [x] `ppt_fill_placeholder`
   - Escribir contenido en un placeholder por tipo.
-- `ppt_replace_placeholder_with_shape`
+- [x] `ppt_replace_placeholder_with_shape`
   - Sustituir placeholder por contenido final.
-- `ppt_restore_placeholder`
+- [x] `ppt_restore_placeholder`
   - Restaurar placeholders eliminados.
 
 ## 4. Texto, tipografía y contenido narrativo
@@ -121,6 +127,8 @@ Cobertura funcional objetivo: inventario exhaustivo, por bloques, de las capacid
   - Ajustar texto automáticamente al shape.
 - [x] `ppt_set_proofing_language`
   - Configurar idioma de corrección.
+- [x] `ppt_set_text_gradient`
+  - Aplicar un degradado de dos colores al texto de un shape.
 - [x] `ppt_spellcheck_slide`
   - Revisión ortográfica de una slide.
 - [x] `ppt_spellcheck_presentation`
@@ -205,6 +213,8 @@ Cobertura funcional objetivo: inventario exhaustivo, por bloques, de las capacid
   - Ajustar bordes suaves.
 - [x] `ppt_set_shape_3d`
   - Aplicar efectos 3D.
+- [x] `ppt_set_slide_background_gradient`
+  - Aplicar un degradado de dos colores al fondo de una diapositiva.
 - [x] `ppt_merge_shapes`
   - Unir, fragmentar, combinar o restar formas.
 - [x] `ppt_crop_shape_to_content`

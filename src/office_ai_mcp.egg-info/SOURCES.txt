@@ -4,7 +4,10 @@ pyproject.toml
 src/office_ai_mcp/__init__.py
 src/office_ai_mcp/__main__.py
 src/office_ai_mcp/config.py
+src/office_ai_mcp/excel_server.py
+src/office_ai_mcp/powerpoint_server.py
 src/office_ai_mcp/server.py
+src/office_ai_mcp/word_server.py
 src/office_ai_mcp.egg-info/PKG-INFO
 src/office_ai_mcp.egg-info/SOURCES.txt
 src/office_ai_mcp.egg-info/dependency_links.txt

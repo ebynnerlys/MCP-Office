@@ -4,6 +4,8 @@ from office_ai_mcp.models.requests import (
     PowerPointAddChartSeriesRequest,
     PowerPointAnimationRequest,
     PowerPointAutofitRequest,
+    PowerPointBuiltinThemeRequest,
+    PowerPointBackgroundGradientRequest,
     PowerPointBulletStyleRequest,
     PowerPointChartAxisScaleRequest,
     PowerPointChartColorsRequest,
@@ -11,16 +13,22 @@ from office_ai_mcp.models.requests import (
     PowerPointChartExportDataRequest,
     PowerPointChartGridlinesRequest,
     PowerPointChartLinkRequest,
+    PowerPointCreatePresentationRequest,
     PowerPointCropImageRequest,
+    PowerPointDesignIdeasRequest,
     PowerPointDocumentPropertiesRequest,
     PowerPointDeleteChartSeriesRequest,
     PowerPointExportSlideImagesRequest,
+    PowerPointFillPlaceholderRequest,
     PowerPointImageFormatRequest,
     PowerPointInsertBulletsRequest,
     PowerPointMediaPlaybackRequest,
     PowerPointMediaRequest,
     PowerPointMediaTrimRequest,
+    PowerPointMasterColorsRequest,
+    PowerPointMasterFontsRequest,
     PowerPointParagraphSpacingRequest,
+    PowerPointReplacePlaceholderRequest,
     PowerPointProofingLanguageRequest,
     PowerPointShape3DRequest,
     PowerPointShapeGlowRequest,
@@ -40,6 +48,7 @@ from office_ai_mcp.models.requests import (
     PowerPointSlideLayoutRequest,
     PowerPointSpellcheckPresentationRequest,
     PowerPointSpellcheckSlideRequest,
+    PowerPointThemeVariantRequest,
     PowerPointSlideTitleRequest,
     PowerPointTableCellRequest,
     PowerPointTableCellStyleRequest,
@@ -55,6 +64,7 @@ from office_ai_mcp.models.requests import (
     PowerPointTableStyleRequest,
     PowerPointTextboxMarginsRequest,
     PowerPointTextDirectionRequest,
+    PowerPointTextGradientRequest,
     PowerPointTextRangeStyleRequest,
     PowerPointTranslateTextRequest,
 )
@@ -68,6 +78,7 @@ from office_ai_mcp.services.powerpoint_service import (
     resolve_connector_type,
     resolve_chart_type,
     resolve_export_image_format,
+    resolve_gradient_style,
     resolve_proofing_language,
     resolve_shape_alignment,
     resolve_shape_distribution,
@@ -143,6 +154,10 @@ def test_resolve_text_direction_accepts_vertical() -> None:
     assert resolve_text_direction("vertical") == "msoTextOrientationVertical"
 
 
+def test_resolve_gradient_style_accepts_horizontal() -> None:
+    assert resolve_gradient_style("horizontal") == "msoGradientHorizontal"
+
+
 def test_resolve_text_autofit_mode_accepts_alias() -> None:
     assert resolve_text_autofit_mode("shape_to_fit_text") == "ppAutoSizeShapeToFitText"
 
@@ -205,6 +220,12 @@ def test_notes_request_allows_empty_text_to_clear_notes() -> None:
     assert request.append is False
 
 
+def test_create_presentation_request_defaults_to_title_layout() -> None:
+    request = PowerPointCreatePresentationRequest(path="demo.pptx")
+    assert request.layout == "title"
+    assert request.create_backup is False
+
+
 def test_search_request_rejects_blank_query() -> None:
     with pytest.raises(ValueError):
         PowerPointSearchRequest(path="demo.pptx", query="   ")
@@ -213,6 +234,76 @@ def test_search_request_rejects_blank_query() -> None:
 def test_slide_layout_request_requires_layout_text() -> None:
     with pytest.raises(ValueError):
         PowerPointSlideLayoutRequest(path="demo.pptx", slide_index=1, layout="")
+
+
+def test_master_fonts_request_requires_one_change() -> None:
+    with pytest.raises(ValueError):
+        PowerPointMasterFontsRequest(path="demo.pptx", master_index=1)
+
+
+def test_master_colors_request_requires_one_change() -> None:
+    with pytest.raises(ValueError):
+        PowerPointMasterColorsRequest(path="demo.pptx", master_index=1)
+
+
+def test_builtin_theme_request_rejects_blank_name() -> None:
+    with pytest.raises(ValueError):
+        PowerPointBuiltinThemeRequest(path="demo.pptx", theme_name="   ")
+
+
+def test_design_ideas_request_accepts_optional_slide_and_fallback() -> None:
+    request = PowerPointDesignIdeasRequest(path="demo.pptx", slide_index=2, fallback_preset="executive")
+    assert request.slide_index == 2
+    assert request.fallback_preset == "executive"
+
+
+def test_theme_variant_request_rejects_blank_variant() -> None:
+    with pytest.raises(ValueError):
+        PowerPointThemeVariantRequest(path="demo.pptx", master_index=1, variant=" ")
+
+
+def test_fill_placeholder_request_requires_exactly_one_selector() -> None:
+    with pytest.raises(ValueError):
+        PowerPointFillPlaceholderRequest(path="demo.pptx", slide_index=1, text="Hola")
+
+
+def test_fill_placeholder_request_accepts_placeholder_type_selector() -> None:
+    request = PowerPointFillPlaceholderRequest(path="demo.pptx", slide_index=1, placeholder_type=2, text="Hola")
+    assert request.placeholder_type == 2
+    assert request.placeholder_occurrence == 1
+
+
+def test_text_gradient_request_accepts_defaults() -> None:
+    request = PowerPointTextGradientRequest(
+        path="demo.pptx",
+        slide_index=1,
+        shape_index=2,
+        start_color="#004E92",
+        end_color="#4FC3F7",
+    )
+    assert request.style == "horizontal"
+    assert request.variant == 1
+
+
+def test_background_gradient_request_restricts_variant_range() -> None:
+    with pytest.raises(ValueError):
+        PowerPointBackgroundGradientRequest(
+            path="demo.pptx",
+            slide_index=1,
+            start_color="#004E92",
+            end_color="#4FC3F7",
+            variant=5,
+        )
+
+
+def test_replace_placeholder_request_requires_image_path_for_image() -> None:
+    with pytest.raises(ValueError):
+        PowerPointReplacePlaceholderRequest(
+            path="demo.pptx",
+            slide_index=1,
+            shape_index=2,
+            replacement_kind="image",
+        )
 
 
 def test_slide_title_request_allows_empty_title() -> None:

@@ -19,6 +19,7 @@ Este servidor expone únicamente herramientas de PowerPoint, además de las herr
 
 ## Herramientas disponibles
 
+- `ppt_create_presentation`
 - `ppt_list_slides`
 - `ppt_save`
 - `ppt_save_copy`
@@ -34,10 +35,22 @@ Este servidor expone únicamente herramientas de PowerPoint, además de las herr
 - `ppt_get_slide_metadata`
 - `ppt_get_slide_summary_extended`
 - `ppt_list_layouts`
+- `ppt_list_masters`
+- `ppt_get_master_details`
 - `ppt_get_slide_layout`
 - `ppt_apply_layout`
+- `ppt_set_master_background`
+- `ppt_set_master_fonts`
+- `ppt_set_master_colors`
+- `ppt_apply_builtin_theme`
+- `ppt_apply_design_ideas`
+- `ppt_apply_theme_variant`
+- `ppt_extract_theme`
 - `ppt_reset_slide_to_layout`
 - `ppt_list_placeholders`
+- `ppt_fill_placeholder`
+- `ppt_replace_placeholder_with_shape`
+- `ppt_restore_placeholder`
 - `ppt_get_slide_shapes`
 - `ppt_duplicate_shape`
 - `ppt_delete_shape`
@@ -90,9 +103,11 @@ Este servidor expone únicamente herramientas de PowerPoint, además de las herr
 - `ppt_apply_style_preset`
 - `ppt_set_slide_transition`
 - `ppt_set_shape_text_style`
+- `ppt_set_text_gradient`
 - `ppt_set_shape_fill`
 - `ppt_set_shape_line`
 - `ppt_set_slide_background`
+- `ppt_set_slide_background_gradient`
 - `ppt_add_shape`
 - `ppt_add_connector`
 - `ppt_connect_shapes`
@@ -193,6 +208,20 @@ Script visual:
 ```
 
 ## Casos de uso frecuentes
+
+### Crear una presentación nueva
+
+```json
+{
+  "tool": "ppt_create_presentation",
+  "arguments": {
+    "path": "C:/presentaciones/demo-nuevo.pptx",
+    "layout": "title",
+    "title": "Informe trimestral",
+    "body_text": "Resultados, riesgos y próximos pasos"
+  }
+}
+```
 
 ### Leer notas de una slide
 
