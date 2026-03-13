@@ -151,6 +151,15 @@ Este servidor expone únicamente herramientas de PowerPoint, además de las herr
 - `ppt_add_smartart`
 - `ppt_get_slide_smartart`
 - `ppt_set_smartart_node_text`
+- `ppt_add_smartart_node`
+- `ppt_delete_smartart_node`
+- `ppt_promote_smartart_node`
+- `ppt_demote_smartart_node`
+- `ppt_reorder_smartart_node`
+- `ppt_set_smartart_style`
+- `ppt_set_smartart_color_theme`
+- `ppt_convert_smartart_to_shapes`
+- `ppt_reroute_connectors`
 - `ppt_add_shape_animation`
 - `ppt_add_element_animation`
 - `ppt_clear_slide_animations`

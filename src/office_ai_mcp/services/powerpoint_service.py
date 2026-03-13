@@ -346,6 +346,22 @@ SMARTART_LAYOUTS = {
     "step_up_process": "urn:microsoft.com/office/officeart/2009/3/layout/StepUpProcess",
     "step_down_process": "urn:microsoft.com/office/officeart/2005/8/layout/StepDownProcess",
 }
+SMARTART_NODE_POSITIONS = {
+    "after": "msoSmartArtNodeAfter",
+    "before": "msoSmartArtNodeBefore",
+    "above": "msoSmartArtNodeAbove",
+    "below": "msoSmartArtNodeBelow",
+}
+SMARTART_NODE_TYPES = {
+    "default": "msoSmartArtNodeTypeDefault",
+    "assistant": "msoSmartArtNodeTypeAssistant",
+}
+SMARTART_REORDER_DIRECTIONS = {"up", "down"}
+SMARTART_CONVERT_COMMANDS = (
+    "SmartArtConvertToShapes",
+    "SmartArtDesignConvertToShapes",
+    "ConvertToShapes",
+)
 TITLE_PLACEHOLDER_TYPES = {1, 3}
 THEME_COLOR_CONSTANTS = {
     "background_1": "msoThemeBackground1",
@@ -673,6 +689,34 @@ def resolve_smartart_layout_identifier(layout: str) -> int | str:
     return SMARTART_LAYOUTS[normalized]
 
 
+def resolve_smartart_node_position(position: str) -> str | int:
+    normalized = normalize_powerpoint_token(position)
+    if normalized.lstrip("-").isdigit():
+        return int(normalized)
+    if normalized not in SMARTART_NODE_POSITIONS:
+        supported = ", ".join(sorted(SMARTART_NODE_POSITIONS))
+        raise ValueError(f"Unsupported SmartArt node position: {position}. Supported values: {supported}")
+    return SMARTART_NODE_POSITIONS[normalized]
+
+
+def resolve_smartart_node_type(node_type: str) -> str | int:
+    normalized = normalize_powerpoint_token(node_type)
+    if normalized.lstrip("-").isdigit():
+        return int(normalized)
+    if normalized not in SMARTART_NODE_TYPES:
+        supported = ", ".join(sorted(SMARTART_NODE_TYPES))
+        raise ValueError(f"Unsupported SmartArt node type: {node_type}. Supported values: {supported}")
+    return SMARTART_NODE_TYPES[normalized]
+
+
+def resolve_smartart_reorder_direction(direction: str) -> str:
+    normalized = normalize_powerpoint_token(direction)
+    if normalized not in SMARTART_REORDER_DIRECTIONS:
+        supported = ", ".join(sorted(SMARTART_REORDER_DIRECTIONS))
+        raise ValueError(f"Unsupported SmartArt reorder direction: {direction}. Supported values: {supported}")
+    return normalized
+
+
 class PowerPointService(OfficeService):
     allowed_suffixes = (".ppt", ".pptx", ".pptm")
 
@@ -823,6 +867,11 @@ class PowerPointService(OfficeService):
     def _shape_has_smartart(self, shape: object) -> bool:
         with suppress(Exception):
             return bool(shape.HasSmartArt)
+        return False
+
+    def _shape_is_connector(self, shape: object) -> bool:
+        with suppress(Exception):
+            return bool(shape.Connector)
         return False
 
     def _shape_supports_text(self, shape: object) -> bool:
@@ -1279,6 +1328,32 @@ class PowerPointService(OfficeService):
             raise ValueError("The selected shape does not contain SmartArt")
         return shape.SmartArt
 
+    def _get_smartart_node(self, smartart: object, node_index: int) -> object:
+        node_count = int(smartart.AllNodes.Count)
+        if node_index > node_count:
+            raise ValueError(f"The SmartArt does not contain node_index={node_index}")
+        return smartart.AllNodes(node_index)
+
+    def _describe_smartart_collection_item(self, item: object) -> dict[str, object | None]:
+        name = None
+        item_id = None
+        category = None
+        description = None
+        with suppress(Exception):
+            name = str(item.Name).strip() or None
+        with suppress(Exception):
+            item_id = str(item.Id).strip() or None
+        with suppress(Exception):
+            category = str(item.Category).strip() or None
+        with suppress(Exception):
+            description = str(item.Description).strip() or None
+        return {
+            "name": name,
+            "id": item_id,
+            "category": category,
+            "description": description,
+        }
+
     def _get_chart_series(self, chart: object, series_index: int) -> object:
         series_collection = chart.SeriesCollection()
         if series_index > int(series_collection.Count):
@@ -1522,6 +1597,40 @@ class PowerPointService(OfficeService):
 
         supported = ", ".join(sorted(SMARTART_LAYOUTS))
         raise ValueError(f"Unsupported SmartArt layout: {layout}. Supported values: {supported}")
+
+    def _resolve_smartart_collection_item(self, collection: object, value: str, label: str) -> object:
+        normalized_value = normalize_powerpoint_token(value)
+        if normalized_value.isdigit():
+            return collection(int(normalized_value))
+
+        for index in range(1, int(collection.Count) + 1):
+            candidate = collection(index)
+            with suppress(Exception):
+                if normalize_powerpoint_token(str(candidate.Id)) == normalized_value:
+                    return candidate
+            with suppress(Exception):
+                if normalize_powerpoint_token(str(candidate.Name)) == normalized_value:
+                    return candidate
+            with suppress(Exception):
+                if normalize_powerpoint_token(str(candidate.Description)) == normalized_value:
+                    return candidate
+
+        raise ValueError(
+            f"Unsupported SmartArt {label}: {value}. Use a collection index, Id, Name, or Description exposed by Office"
+        )
+
+    def _resolve_smartart_quickstyle(self, powerpoint: object, style: str) -> object:
+        return self._resolve_smartart_collection_item(powerpoint.SmartArtQuickStyles, style, "style")
+
+    def _resolve_smartart_color_theme(self, powerpoint: object, color_theme: str) -> object:
+        return self._resolve_smartart_collection_item(powerpoint.SmartArtColors, color_theme, "color theme")
+
+    def _collect_shape_range_names(self, shape_range: object) -> list[str]:
+        shape_names: list[str] = []
+        for index in range(1, int(shape_range.Count) + 1):
+            with suppress(Exception):
+                shape_names.append(str(shape_range(index).Name))
+        return shape_names
 
     def _set_title_text(self, slide: object, title: str) -> None:
         with suppress(Exception):
@@ -5290,7 +5399,7 @@ class PowerPointService(OfficeService):
         with self._open_presentation(source, read_only=False) as presentation:
             slide = presentation.Slides(slide_index)
             smartart = self._require_smartart_shape(self._get_shape(slide, shape_index))
-            node = smartart.AllNodes(node_index)
+            node = self._get_smartart_node(smartart, node_index)
             node.TextFrame2.TextRange.Text = text
             presentation.Save()
             return OperationResult(
@@ -5302,6 +5411,311 @@ class PowerPointService(OfficeService):
                     "shape_index": shape_index,
                     "node_index": node_index,
                     "text": text,
+                },
+            )
+
+    @retry(stop=stop_after_attempt(3), wait=wait_fixed(1), reraise=True)
+    def add_smartart_node(
+        self,
+        path: str,
+        slide_index: int,
+        shape_index: int,
+        node_index: int,
+        position: str,
+        node_type: str,
+        text: str,
+        create_backup: bool,
+    ) -> OperationResult:
+        source = self.resolve_document_path(path)
+        backup_path = self.maybe_create_backup(source, create_backup)
+
+        from win32com.client import constants
+
+        with self._open_presentation(source, read_only=False) as presentation:
+            slide = presentation.Slides(slide_index)
+            smartart = self._require_smartart_shape(self._get_shape(slide, shape_index))
+            anchor_node = self._get_smartart_node(smartart, node_index)
+            new_node = anchor_node.AddNode(
+                self._resolve_office_constant(constants, position, SMARTART_NODE_POSITIONS),
+                self._resolve_office_constant(constants, node_type, SMARTART_NODE_TYPES),
+            )
+            new_node.TextFrame2.TextRange.Text = text
+            new_level = None
+            with suppress(Exception):
+                new_level = int(new_node.Level)
+
+            presentation.Save()
+            return OperationResult(
+                message="PowerPoint SmartArt node added",
+                file_path=str(source),
+                backup_path=backup_path,
+                details={
+                    "slide_index": slide_index,
+                    "shape_index": shape_index,
+                    "anchor_node_index": node_index,
+                    "position": resolve_smartart_node_position(position),
+                    "node_type": resolve_smartart_node_type(node_type),
+                    "text": text,
+                    "level": new_level,
+                    "node_count": int(smartart.AllNodes.Count),
+                },
+            )
+
+    @retry(stop=stop_after_attempt(3), wait=wait_fixed(1), reraise=True)
+    def delete_smartart_node(
+        self,
+        path: str,
+        slide_index: int,
+        shape_index: int,
+        node_index: int,
+        create_backup: bool,
+    ) -> OperationResult:
+        source = self.resolve_document_path(path)
+        backup_path = self.maybe_create_backup(source, create_backup)
+
+        with self._open_presentation(source, read_only=False) as presentation:
+            slide = presentation.Slides(slide_index)
+            smartart = self._require_smartart_shape(self._get_shape(slide, shape_index))
+            node = self._get_smartart_node(smartart, node_index)
+            deleted_text = ""
+            with suppress(Exception):
+                deleted_text = str(node.TextFrame2.TextRange.Text)
+            node.Delete()
+            presentation.Save()
+            return OperationResult(
+                message="PowerPoint SmartArt node deleted",
+                file_path=str(source),
+                backup_path=backup_path,
+                details={
+                    "slide_index": slide_index,
+                    "shape_index": shape_index,
+                    "node_index": node_index,
+                    "text": deleted_text,
+                    "node_count": int(smartart.AllNodes.Count),
+                },
+            )
+
+    @retry(stop=stop_after_attempt(3), wait=wait_fixed(1), reraise=True)
+    def promote_smartart_node(
+        self,
+        path: str,
+        slide_index: int,
+        shape_index: int,
+        node_index: int,
+        create_backup: bool,
+    ) -> OperationResult:
+        source = self.resolve_document_path(path)
+        backup_path = self.maybe_create_backup(source, create_backup)
+
+        with self._open_presentation(source, read_only=False) as presentation:
+            slide = presentation.Slides(slide_index)
+            smartart = self._require_smartart_shape(self._get_shape(slide, shape_index))
+            node = self._get_smartart_node(smartart, node_index)
+            node.Promote()
+            new_level = None
+            with suppress(Exception):
+                new_level = int(node.Level)
+            presentation.Save()
+            return OperationResult(
+                message="PowerPoint SmartArt node promoted",
+                file_path=str(source),
+                backup_path=backup_path,
+                details={
+                    "slide_index": slide_index,
+                    "shape_index": shape_index,
+                    "node_index": node_index,
+                    "level": new_level,
+                },
+            )
+
+    @retry(stop=stop_after_attempt(3), wait=wait_fixed(1), reraise=True)
+    def demote_smartart_node(
+        self,
+        path: str,
+        slide_index: int,
+        shape_index: int,
+        node_index: int,
+        create_backup: bool,
+    ) -> OperationResult:
+        source = self.resolve_document_path(path)
+        backup_path = self.maybe_create_backup(source, create_backup)
+
+        with self._open_presentation(source, read_only=False) as presentation:
+            slide = presentation.Slides(slide_index)
+            smartart = self._require_smartart_shape(self._get_shape(slide, shape_index))
+            node = self._get_smartart_node(smartart, node_index)
+            node.Demote()
+            new_level = None
+            with suppress(Exception):
+                new_level = int(node.Level)
+            presentation.Save()
+            return OperationResult(
+                message="PowerPoint SmartArt node demoted",
+                file_path=str(source),
+                backup_path=backup_path,
+                details={
+                    "slide_index": slide_index,
+                    "shape_index": shape_index,
+                    "node_index": node_index,
+                    "level": new_level,
+                },
+            )
+
+    @retry(stop=stop_after_attempt(3), wait=wait_fixed(1), reraise=True)
+    def reorder_smartart_node(
+        self,
+        path: str,
+        slide_index: int,
+        shape_index: int,
+        node_index: int,
+        direction: str,
+        steps: int,
+        create_backup: bool,
+    ) -> OperationResult:
+        source = self.resolve_document_path(path)
+        backup_path = self.maybe_create_backup(source, create_backup)
+        resolved_direction = resolve_smartart_reorder_direction(direction)
+
+        with self._open_presentation(source, read_only=False) as presentation:
+            slide = presentation.Slides(slide_index)
+            smartart = self._require_smartart_shape(self._get_shape(slide, shape_index))
+            node = self._get_smartart_node(smartart, node_index)
+
+            for _ in range(steps):
+                if resolved_direction == "up":
+                    node.ReorderUp()
+                else:
+                    node.ReorderDown()
+
+            presentation.Save()
+            return OperationResult(
+                message="PowerPoint SmartArt node reordered",
+                file_path=str(source),
+                backup_path=backup_path,
+                details={
+                    "slide_index": slide_index,
+                    "shape_index": shape_index,
+                    "node_index": node_index,
+                    "direction": resolved_direction,
+                    "steps": steps,
+                },
+            )
+
+    @retry(stop=stop_after_attempt(3), wait=wait_fixed(1), reraise=True)
+    def set_smartart_style(
+        self,
+        path: str,
+        slide_index: int,
+        shape_index: int,
+        style: str,
+        create_backup: bool,
+    ) -> OperationResult:
+        source = self.resolve_document_path(path)
+        backup_path = self.maybe_create_backup(source, create_backup)
+
+        with self._open_presentation_session(source, read_only=False, visible=True, with_window=True) as (powerpoint, presentation):
+            slide = presentation.Slides(slide_index)
+            smartart = self._require_smartart_shape(self._get_shape(slide, shape_index))
+            quick_style = self._resolve_smartart_quickstyle(powerpoint, style)
+            smartart.QuickStyle = quick_style
+            presentation.Save()
+            return OperationResult(
+                message="PowerPoint SmartArt style updated",
+                file_path=str(source),
+                backup_path=backup_path,
+                details={
+                    "slide_index": slide_index,
+                    "shape_index": shape_index,
+                    "style": self._describe_smartart_collection_item(quick_style),
+                },
+            )
+
+    @retry(stop=stop_after_attempt(3), wait=wait_fixed(1), reraise=True)
+    def set_smartart_color_theme(
+        self,
+        path: str,
+        slide_index: int,
+        shape_index: int,
+        color_theme: str,
+        create_backup: bool,
+    ) -> OperationResult:
+        source = self.resolve_document_path(path)
+        backup_path = self.maybe_create_backup(source, create_backup)
+
+        with self._open_presentation_session(source, read_only=False, visible=True, with_window=True) as (powerpoint, presentation):
+            slide = presentation.Slides(slide_index)
+            smartart = self._require_smartart_shape(self._get_shape(slide, shape_index))
+            color_style = self._resolve_smartart_color_theme(powerpoint, color_theme)
+            smartart.Color = color_style
+            presentation.Save()
+            return OperationResult(
+                message="PowerPoint SmartArt color theme updated",
+                file_path=str(source),
+                backup_path=backup_path,
+                details={
+                    "slide_index": slide_index,
+                    "shape_index": shape_index,
+                    "color_theme": self._describe_smartart_collection_item(color_style),
+                },
+            )
+
+    @retry(stop=stop_after_attempt(3), wait=wait_fixed(1), reraise=True)
+    def convert_smartart_to_shapes(
+        self,
+        path: str,
+        slide_index: int,
+        shape_index: int,
+        create_backup: bool,
+    ) -> OperationResult:
+        source = self.resolve_document_path(path)
+        backup_path = self.maybe_create_backup(source, create_backup)
+
+        with self._open_presentation_session(source, read_only=False, visible=True, with_window=True) as (powerpoint, presentation):
+            slide = presentation.Slides(slide_index)
+            shape = self._get_shape(slide, shape_index)
+            self._require_smartart_shape(shape)
+
+            conversion_method = None
+            converted_shape_names: list[str] = []
+
+            with suppress(Exception):
+                shape_range = shape.Ungroup()
+                converted_shape_names = self._collect_shape_range_names(shape_range)
+                if converted_shape_names:
+                    conversion_method = "ungroup"
+
+            if conversion_method is None:
+                with suppress(Exception):
+                    presentation.Windows(1).View.GotoSlide(slide_index)
+                shape.Select()
+
+                last_error: Exception | None = None
+                for command_name in SMARTART_CONVERT_COMMANDS:
+                    try:
+                        powerpoint.CommandBars.ExecuteMso(command_name)
+                        selection = presentation.Windows(1).Selection.ShapeRange
+                        converted_shape_names = self._collect_shape_range_names(selection)
+                        conversion_method = f"execute_mso:{command_name}"
+                        break
+                    except Exception as exc:
+                        last_error = exc
+
+                if conversion_method is None:
+                    raise ValueError(
+                        "PowerPoint could not convert the SmartArt to editable shapes on this installation"
+                    ) from last_error
+
+            presentation.Save()
+            return OperationResult(
+                message="PowerPoint SmartArt converted to shapes",
+                file_path=str(source),
+                backup_path=backup_path,
+                details={
+                    "slide_index": slide_index,
+                    "shape_index": shape_index,
+                    "conversion_method": conversion_method,
+                    "shape_count": len(converted_shape_names),
+                    "shape_names": converted_shape_names,
                 },
             )
 
@@ -5342,6 +5756,61 @@ class PowerPointService(OfficeService):
                     "shape_name": str(shape.Name),
                     "layout": resolve_smartart_layout_identifier(layout),
                     "node_count": int(smartart.AllNodes.Count),
+                },
+            )
+
+    @retry(stop=stop_after_attempt(3), wait=wait_fixed(1), reraise=True)
+    def reroute_connectors(
+        self,
+        path: str,
+        slide_index: int,
+        shape_indexes: list[int],
+        create_backup: bool,
+    ) -> OperationResult:
+        source = self.resolve_document_path(path)
+        backup_path = self.maybe_create_backup(source, create_backup)
+
+        with self._open_presentation(source, read_only=False) as presentation:
+            slide = presentation.Slides(slide_index)
+
+            connector_shapes: list[tuple[int, object]] = []
+            if shape_indexes:
+                for current_shape_index in shape_indexes:
+                    connector = self._get_shape(slide, current_shape_index)
+                    if not self._shape_is_connector(connector):
+                        raise ValueError(f"The selected shape is not a connector: shape_index={current_shape_index}")
+                    connector_shapes.append((current_shape_index, connector))
+            else:
+                connector_shapes = [
+                    (current_shape_index, connector)
+                    for current_shape_index, connector in self._iter_shapes(slide)
+                    if self._shape_is_connector(connector)
+                ]
+
+            rerouted_indexes: list[int] = []
+            skipped_indexes: list[int] = []
+            skipped_names: list[str] = []
+            for current_shape_index, connector in connector_shapes:
+                try:
+                    connector.RerouteConnections()
+                    rerouted_indexes.append(current_shape_index)
+                except Exception:
+                    skipped_indexes.append(current_shape_index)
+                    with suppress(Exception):
+                        skipped_names.append(str(connector.Name))
+
+            presentation.Save()
+            return OperationResult(
+                message="PowerPoint connectors rerouted",
+                file_path=str(source),
+                backup_path=backup_path,
+                details={
+                    "slide_index": slide_index,
+                    "requested_shape_indexes": shape_indexes,
+                    "rerouted_indexes": rerouted_indexes,
+                    "rerouted_count": len(rerouted_indexes),
+                    "skipped_indexes": skipped_indexes,
+                    "skipped_names": skipped_names,
                 },
             )
 

@@ -319,23 +319,23 @@ Cobertura funcional objetivo: inventario exhaustivo, por bloques, de las capacid
 
 ## 10. SmartArt, diagramas y conectores
 
-- `ppt_add_smartart_node`
+- [x] `ppt_add_smartart_node`
   - Añadir nodos.
-- `ppt_delete_smartart_node`
+- [x] `ppt_delete_smartart_node`
   - Eliminar nodos.
-- `ppt_promote_smartart_node`
+- [x] `ppt_promote_smartart_node`
   - Subir nivel jerárquico.
-- `ppt_demote_smartart_node`
+- [x] `ppt_demote_smartart_node`
   - Bajar nivel jerárquico.
-- `ppt_reorder_smartart_node`
+- [x] `ppt_reorder_smartart_node`
   - Reordenar nodos.
-- `ppt_set_smartart_style`
+- [x] `ppt_set_smartart_style`
   - Cambiar estilo visual.
-- `ppt_set_smartart_color_theme`
+- [x] `ppt_set_smartart_color_theme`
   - Cambiar combinación de colores.
-- `ppt_convert_smartart_to_shapes`
+- [x] `ppt_convert_smartart_to_shapes`
   - Convertir a shapes editables.
-- `ppt_reroute_connectors`
+- [x] `ppt_reroute_connectors`
   - Recalcular conectores entre shapes.
 
 ## 11. Animaciones, transiciones y temporización

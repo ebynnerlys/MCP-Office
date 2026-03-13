@@ -1176,6 +1176,61 @@ class PowerPointSmartArtNodeRequest(PowerPointShapeRequest):
     text: str
 
 
+class PowerPointSmartArtNodeInsertRequest(PowerPointShapeRequest):
+    node_index: int = Field(ge=1)
+    position: str = Field(default="below", min_length=1)
+    node_type: str = Field(default="default", min_length=1)
+    text: str = ""
+
+
+class PowerPointSmartArtNodeReorderRequest(PowerPointShapeRequest):
+    node_index: int = Field(ge=1)
+    direction: str = Field(default="down", min_length=1)
+    steps: int = Field(default=1, ge=1)
+
+    @field_validator("direction")
+    @classmethod
+    def validate_direction(cls, value: str) -> str:
+        cleaned = value.strip()
+        if not cleaned:
+            raise ValueError("direction cannot be empty")
+        return cleaned
+
+
+class PowerPointSmartArtStyleRequest(PowerPointShapeRequest):
+    style: str = Field(min_length=1)
+
+    @field_validator("style")
+    @classmethod
+    def validate_style(cls, value: str) -> str:
+        cleaned = value.strip()
+        if not cleaned:
+            raise ValueError("style cannot be empty")
+        return cleaned
+
+
+class PowerPointSmartArtColorThemeRequest(PowerPointShapeRequest):
+    color_theme: str = Field(min_length=1)
+
+    @field_validator("color_theme")
+    @classmethod
+    def validate_color_theme(cls, value: str) -> str:
+        cleaned = value.strip()
+        if not cleaned:
+            raise ValueError("color_theme cannot be empty")
+        return cleaned
+
+
+class PowerPointConnectorRerouteRequest(PowerPointSlideRequest):
+    shape_indexes: list[int] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def validate_shape_indexes(self) -> "PowerPointConnectorRerouteRequest":
+        if len(set(self.shape_indexes)) != len(self.shape_indexes):
+            raise ValueError("shape_indexes must not contain duplicates")
+        return self
+
+
 class PowerPointAddTableRequest(PowerPointPositionedSlideRequest):
     rows: int = Field(ge=1)
     columns: int = Field(ge=1)

@@ -13,6 +13,7 @@ from office_ai_mcp.models.requests import (
     PowerPointChartExportDataRequest,
     PowerPointChartGridlinesRequest,
     PowerPointChartLinkRequest,
+    PowerPointConnectorRerouteRequest,
     PowerPointCreatePresentationRequest,
     PowerPointCropImageRequest,
     PowerPointDesignIdeasRequest,
@@ -48,6 +49,9 @@ from office_ai_mcp.models.requests import (
     PowerPointSlideLayoutRequest,
     PowerPointSpellcheckPresentationRequest,
     PowerPointSpellcheckSlideRequest,
+    PowerPointSmartArtColorThemeRequest,
+    PowerPointSmartArtNodeInsertRequest,
+    PowerPointSmartArtNodeReorderRequest,
     PowerPointThemeVariantRequest,
     PowerPointSlideTitleRequest,
     PowerPointTableCellRequest,
@@ -89,6 +93,9 @@ from office_ai_mcp.services.powerpoint_service import (
     resolve_shape_z_order,
     resolve_slide_layout,
     resolve_smartart_layout_identifier,
+    resolve_smartart_node_position,
+    resolve_smartart_node_type,
+    resolve_smartart_reorder_direction,
     resolve_text_autofit_mode,
     resolve_text_direction,
 )
@@ -112,6 +119,18 @@ def test_resolve_chart_type_accepts_alias() -> None:
 
 def test_resolve_smartart_layout_identifier_accepts_alias() -> None:
     assert resolve_smartart_layout_identifier("basic_process") == "urn:microsoft.com/office/officeart/2005/8/layout/process1"
+
+
+def test_resolve_smartart_node_position_accepts_alias() -> None:
+    assert resolve_smartart_node_position("below") == "msoSmartArtNodeBelow"
+
+
+def test_resolve_smartart_node_type_accepts_alias() -> None:
+    assert resolve_smartart_node_type("assistant") == "msoSmartArtNodeTypeAssistant"
+
+
+def test_resolve_smartart_reorder_direction_accepts_down() -> None:
+    assert resolve_smartart_reorder_direction("down") == "down"
 
 
 def test_resolve_shape_type_accepts_alias() -> None:
@@ -255,6 +274,39 @@ def test_design_ideas_request_accepts_optional_slide_and_fallback() -> None:
     request = PowerPointDesignIdeasRequest(path="demo.pptx", slide_index=2, fallback_preset="executive")
     assert request.slide_index == 2
     assert request.fallback_preset == "executive"
+
+
+def test_smartart_node_insert_request_accepts_defaults() -> None:
+    request = PowerPointSmartArtNodeInsertRequest(path="demo.pptx", slide_index=1, shape_index=2, node_index=1)
+    assert request.position == "below"
+    assert request.node_type == "default"
+    assert request.text == ""
+
+
+def test_smartart_node_reorder_request_rejects_blank_direction() -> None:
+    with pytest.raises(ValueError):
+        PowerPointSmartArtNodeReorderRequest(
+            path="demo.pptx",
+            slide_index=1,
+            shape_index=2,
+            node_index=1,
+            direction="   ",
+        )
+
+
+def test_smartart_color_theme_request_rejects_blank_value() -> None:
+    with pytest.raises(ValueError):
+        PowerPointSmartArtColorThemeRequest(
+            path="demo.pptx",
+            slide_index=1,
+            shape_index=2,
+            color_theme="   ",
+        )
+
+
+def test_connector_reroute_request_rejects_duplicate_shape_indexes() -> None:
+    with pytest.raises(ValueError):
+        PowerPointConnectorRerouteRequest(path="demo.pptx", slide_index=1, shape_indexes=[2, 2])
 
 
 def test_theme_variant_request_rejects_blank_variant() -> None:

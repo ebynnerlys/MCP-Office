@@ -29,6 +29,7 @@ from office_ai_mcp.models.requests import (
     PowerPointChartSeriesStyleRequest,
     PowerPointChartTypeChangeRequest,
     PowerPointChartTitleRequest,
+    PowerPointConnectorRerouteRequest,
     PowerPointConnectShapesRequest,
     PowerPointCreatePresentationRequest,
     PowerPointCropImageRequest,
@@ -89,7 +90,11 @@ from office_ai_mcp.models.requests import (
     PowerPointSpellcheckPresentationRequest,
     PowerPointSpellcheckSlideRequest,
     PowerPointSlideTitleRequest,
+    PowerPointSmartArtColorThemeRequest,
+    PowerPointSmartArtNodeInsertRequest,
+    PowerPointSmartArtNodeReorderRequest,
     PowerPointSmartArtNodeRequest,
+    PowerPointSmartArtStyleRequest,
     PowerPointTableCellRequest,
     PowerPointTableCellStyleRequest,
     PowerPointTableColumnRequest,
@@ -3651,6 +3656,255 @@ def register_powerpoint_tools(mcp: FastMCP, service: PowerPointService) -> None:
             shape_index=request.shape_index,
             node_index=request.node_index,
             text=request.text,
+            create_backup=request.create_backup,
+        ).model_dump()
+
+    @mcp.tool(
+        name="ppt_add_smartart_node",
+        description="Add a SmartArt node relative to an existing node.",
+    )
+    def ppt_add_smartart_node(
+        path: str,
+        slide_index: int,
+        shape_index: int,
+        node_index: int,
+        position: str = "below",
+        node_type: str = "default",
+        text: str = "",
+        create_backup: bool = True,
+    ) -> dict[str, object]:
+        """Insert one SmartArt node next to an existing anchor node."""
+        request = PowerPointSmartArtNodeInsertRequest(
+            path=path,
+            slide_index=slide_index,
+            shape_index=shape_index,
+            node_index=node_index,
+            position=position,
+            node_type=node_type,
+            text=text,
+            create_backup=create_backup,
+        )
+        return service.add_smartart_node(
+            path=request.path,
+            slide_index=request.slide_index,
+            shape_index=request.shape_index,
+            node_index=request.node_index,
+            position=request.position,
+            node_type=request.node_type,
+            text=request.text,
+            create_backup=request.create_backup,
+        ).model_dump()
+
+    @mcp.tool(
+        name="ppt_delete_smartart_node",
+        description="Delete one SmartArt node from a SmartArt shape.",
+    )
+    def ppt_delete_smartart_node(
+        path: str,
+        slide_index: int,
+        shape_index: int,
+        node_index: int,
+        create_backup: bool = True,
+    ) -> dict[str, object]:
+        """Delete one SmartArt node."""
+        request = PowerPointShapeRequest(
+            path=path,
+            slide_index=slide_index,
+            shape_index=shape_index,
+            create_backup=create_backup,
+        )
+        return service.delete_smartart_node(
+            path=request.path,
+            slide_index=request.slide_index,
+            shape_index=request.shape_index,
+            node_index=node_index,
+            create_backup=request.create_backup,
+        ).model_dump()
+
+    @mcp.tool(
+        name="ppt_promote_smartart_node",
+        description="Promote a SmartArt node one level in the hierarchy.",
+    )
+    def ppt_promote_smartart_node(
+        path: str,
+        slide_index: int,
+        shape_index: int,
+        node_index: int,
+        create_backup: bool = True,
+    ) -> dict[str, object]:
+        """Promote one SmartArt node."""
+        request = PowerPointShapeRequest(
+            path=path,
+            slide_index=slide_index,
+            shape_index=shape_index,
+            create_backup=create_backup,
+        )
+        return service.promote_smartart_node(
+            path=request.path,
+            slide_index=request.slide_index,
+            shape_index=request.shape_index,
+            node_index=node_index,
+            create_backup=request.create_backup,
+        ).model_dump()
+
+    @mcp.tool(
+        name="ppt_demote_smartart_node",
+        description="Demote a SmartArt node one level in the hierarchy.",
+    )
+    def ppt_demote_smartart_node(
+        path: str,
+        slide_index: int,
+        shape_index: int,
+        node_index: int,
+        create_backup: bool = True,
+    ) -> dict[str, object]:
+        """Demote one SmartArt node."""
+        request = PowerPointShapeRequest(
+            path=path,
+            slide_index=slide_index,
+            shape_index=shape_index,
+            create_backup=create_backup,
+        )
+        return service.demote_smartart_node(
+            path=request.path,
+            slide_index=request.slide_index,
+            shape_index=request.shape_index,
+            node_index=node_index,
+            create_backup=request.create_backup,
+        ).model_dump()
+
+    @mcp.tool(
+        name="ppt_reorder_smartart_node",
+        description="Move a SmartArt node up or down within its list order.",
+    )
+    def ppt_reorder_smartart_node(
+        path: str,
+        slide_index: int,
+        shape_index: int,
+        node_index: int,
+        direction: str = "down",
+        steps: int = 1,
+        create_backup: bool = True,
+    ) -> dict[str, object]:
+        """Reorder one SmartArt node within the diagram."""
+        request = PowerPointSmartArtNodeReorderRequest(
+            path=path,
+            slide_index=slide_index,
+            shape_index=shape_index,
+            node_index=node_index,
+            direction=direction,
+            steps=steps,
+            create_backup=create_backup,
+        )
+        return service.reorder_smartart_node(
+            path=request.path,
+            slide_index=request.slide_index,
+            shape_index=request.shape_index,
+            node_index=request.node_index,
+            direction=request.direction,
+            steps=request.steps,
+            create_backup=request.create_backup,
+        ).model_dump()
+
+    @mcp.tool(
+        name="ppt_set_smartart_style",
+        description="Apply a SmartArt quick style by collection index, Id, name, or description.",
+    )
+    def ppt_set_smartart_style(
+        path: str,
+        slide_index: int,
+        shape_index: int,
+        style: str,
+        create_backup: bool = True,
+    ) -> dict[str, object]:
+        """Change the visual SmartArt quick style."""
+        request = PowerPointSmartArtStyleRequest(
+            path=path,
+            slide_index=slide_index,
+            shape_index=shape_index,
+            style=style,
+            create_backup=create_backup,
+        )
+        return service.set_smartart_style(
+            path=request.path,
+            slide_index=request.slide_index,
+            shape_index=request.shape_index,
+            style=request.style,
+            create_backup=request.create_backup,
+        ).model_dump()
+
+    @mcp.tool(
+        name="ppt_set_smartart_color_theme",
+        description="Apply a SmartArt color theme by collection index, Id, name, or description.",
+    )
+    def ppt_set_smartart_color_theme(
+        path: str,
+        slide_index: int,
+        shape_index: int,
+        color_theme: str,
+        create_backup: bool = True,
+    ) -> dict[str, object]:
+        """Change the SmartArt color theme."""
+        request = PowerPointSmartArtColorThemeRequest(
+            path=path,
+            slide_index=slide_index,
+            shape_index=shape_index,
+            color_theme=color_theme,
+            create_backup=create_backup,
+        )
+        return service.set_smartart_color_theme(
+            path=request.path,
+            slide_index=request.slide_index,
+            shape_index=request.shape_index,
+            color_theme=request.color_theme,
+            create_backup=request.create_backup,
+        ).model_dump()
+
+    @mcp.tool(
+        name="ppt_convert_smartart_to_shapes",
+        description="Convert a SmartArt object into editable PowerPoint shapes when supported by Office.",
+    )
+    def ppt_convert_smartart_to_shapes(
+        path: str,
+        slide_index: int,
+        shape_index: int,
+        create_backup: bool = True,
+    ) -> dict[str, object]:
+        """Convert one SmartArt shape into editable shapes."""
+        request = PowerPointShapeRequest(
+            path=path,
+            slide_index=slide_index,
+            shape_index=shape_index,
+            create_backup=create_backup,
+        )
+        return service.convert_smartart_to_shapes(
+            path=request.path,
+            slide_index=request.slide_index,
+            shape_index=request.shape_index,
+            create_backup=request.create_backup,
+        ).model_dump()
+
+    @mcp.tool(
+        name="ppt_reroute_connectors",
+        description="Reroute connector shapes so PowerPoint recalculates the shortest path between connected shapes.",
+    )
+    def ppt_reroute_connectors(
+        path: str,
+        slide_index: int,
+        shape_indexes: list[int] | None = None,
+        create_backup: bool = True,
+    ) -> dict[str, object]:
+        """Reroute connector shapes on one slide."""
+        request = PowerPointConnectorRerouteRequest(
+            path=path,
+            slide_index=slide_index,
+            shape_indexes=shape_indexes or [],
+            create_backup=create_backup,
+        )
+        return service.reroute_connectors(
+            path=request.path,
+            slide_index=request.slide_index,
+            shape_indexes=request.shape_indexes,
             create_backup=request.create_backup,
         ).model_dump()
 
