@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Any
 
 from pydantic import BaseModel, Field, field_validator, model_validator
@@ -33,6 +34,57 @@ class ReplaceTextRequest(DocumentPathRequest):
 class ExportPdfRequest(DocumentPathRequest):
     out_path: str
     create_backup: bool = False
+
+
+class WordDocumentPropertiesRequest(DocumentPathRequest):
+    author: str | None = None
+    title: str | None = None
+    subject: str | None = None
+    keywords: str | None = None
+    comments: str | None = None
+    category: str | None = None
+    company: str | None = None
+    manager: str | None = None
+    last_author: str | None = None
+    creation_date: str | None = None
+    last_save_time: str | None = None
+    total_editing_time: int | None = Field(default=None, ge=0)
+    revision_number: str | None = None
+
+    @field_validator("creation_date", "last_save_time")
+    @classmethod
+    def validate_datetime_text(cls, value: str | None) -> str | None:
+        if value is None:
+            return value
+        cleaned = value.strip()
+        if not cleaned:
+            raise ValueError("datetime document properties cannot be empty")
+        normalized = cleaned[:-1] + "+00:00" if cleaned.endswith("Z") else cleaned
+        datetime.fromisoformat(normalized)
+        return cleaned
+
+    @model_validator(mode="after")
+    def validate_changes(self) -> "WordDocumentPropertiesRequest":
+        if not any(
+            value is not None
+            for value in (
+                self.author,
+                self.title,
+                self.subject,
+                self.keywords,
+                self.comments,
+                self.category,
+                self.company,
+                self.manager,
+                self.last_author,
+                self.creation_date,
+                self.last_save_time,
+                self.total_editing_time,
+                self.revision_number,
+            )
+        ):
+            raise ValueError("at least one document property must be provided")
+        return self
 
 
 class SaveAsRequest(DocumentPathRequest):
@@ -232,6 +284,23 @@ class PowerPointDocumentPropertiesRequest(DocumentPathRequest):
     category: str | None = None
     company: str | None = None
     manager: str | None = None
+    last_author: str | None = None
+    creation_date: str | None = None
+    last_save_time: str | None = None
+    total_editing_time: int | None = Field(default=None, ge=0)
+    revision_number: str | None = None
+
+    @field_validator("creation_date", "last_save_time")
+    @classmethod
+    def validate_document_datetime_text(cls, value: str | None) -> str | None:
+        if value is None:
+            return value
+        cleaned = value.strip()
+        if not cleaned:
+            raise ValueError("datetime document properties cannot be empty")
+        normalized = cleaned[:-1] + "+00:00" if cleaned.endswith("Z") else cleaned
+        datetime.fromisoformat(normalized)
+        return cleaned
 
     @model_validator(mode="after")
     def validate_changes(self) -> "PowerPointDocumentPropertiesRequest":
@@ -246,6 +315,11 @@ class PowerPointDocumentPropertiesRequest(DocumentPathRequest):
                 self.category,
                 self.company,
                 self.manager,
+                self.last_author,
+                self.creation_date,
+                self.last_save_time,
+                self.total_editing_time,
+                self.revision_number,
             )
         ):
             raise ValueError("at least one document property must be provided")

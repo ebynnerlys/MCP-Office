@@ -25,9 +25,9 @@ Cobertura funcional objetivo: inventario exhaustivo, por bloques, de las capacid
 - `ppt_repair_presentation`
   - Intentar abrir y reparar archivos dañados si COM lo soporta.
 - [x] `ppt_get_document_properties`
-  - Leer propiedades del archivo.
+  - Leer propiedades integradas y personalizadas, incluyendo fechas y tiempo total de edición cuando Office lo exponga.
 - [x] `ppt_set_document_properties`
-  - Modificar autor, título, asunto, etiquetas.
+  - Modificar autor, título, asunto, etiquetas, comentarios, categoría, empresa, manager, último autor, fechas, tiempo total de edición y número de revisión.
 - `ppt_add_custom_property`
   - Propiedades personalizadas.
 - `ppt_remove_custom_property`

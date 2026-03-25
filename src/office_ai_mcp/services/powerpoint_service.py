@@ -4,6 +4,7 @@ import csv
 import json
 import re
 from contextlib import contextmanager, suppress
+from datetime import datetime
 from pathlib import Path
 from typing import Iterator
 
@@ -396,7 +397,38 @@ BUILTIN_DOCUMENT_PROPERTY_NAMES = {
     "category": "Category",
     "company": "Company",
     "manager": "Manager",
+    "last_author": "Last Author",
+    "creation_date": "Creation Date",
+    "last_save_time": "Last Save Time",
+    "total_editing_time": "Total Editing Time",
+    "revision_number": "Revision Number",
 }
+WRITABLE_BUILTIN_DOCUMENT_PROPERTY_NAMES = {
+    "author": "Author",
+    "title": "Title",
+    "subject": "Subject",
+    "keywords": "Keywords",
+    "comments": "Comments",
+    "category": "Category",
+    "company": "Company",
+    "manager": "Manager",
+    "last_author": "Last Author",
+    "creation_date": "Creation Date",
+    "last_save_time": "Last Save Time",
+    "total_editing_time": "Total Editing Time",
+    "revision_number": "Revision Number",
+}
+
+
+def coerce_document_property_value(key: str, value: object) -> object:
+    if value is None:
+        return value
+    if key not in {"creation_date", "last_save_time"}:
+        return value
+    if not isinstance(value, str):
+        return value
+    normalized = value[:-1] + "+00:00" if value.endswith("Z") else value
+    return datetime.fromisoformat(normalized)
 
 
 def resolve_slide_layout(layout: str) -> int:
@@ -2235,6 +2267,11 @@ class PowerPointService(OfficeService):
         category: str | None,
         company: str | None,
         manager: str | None,
+        last_author: str | None,
+        creation_date: str | None,
+        last_save_time: str | None,
+        total_editing_time: int | None,
+        revision_number: str | None,
         create_backup: bool,
     ) -> OperationResult:
         source = self.resolve_document_path(path)
@@ -2248,6 +2285,11 @@ class PowerPointService(OfficeService):
             "category": category,
             "company": company,
             "manager": manager,
+            "last_author": last_author,
+            "creation_date": creation_date,
+            "last_save_time": last_save_time,
+            "total_editing_time": total_editing_time,
+            "revision_number": revision_number,
         }
 
         with self._open_presentation(source, read_only=False) as presentation:
@@ -2256,8 +2298,8 @@ class PowerPointService(OfficeService):
             for key, value in updates.items():
                 if value is None:
                     continue
-                property_name = BUILTIN_DOCUMENT_PROPERTY_NAMES[key]
-                self._set_document_property(properties, property_name, value)
+                property_name = WRITABLE_BUILTIN_DOCUMENT_PROPERTY_NAMES[key]
+                self._set_document_property(properties, property_name, coerce_document_property_value(key, value))
                 applied_updates[key] = value
 
             presentation.Save()

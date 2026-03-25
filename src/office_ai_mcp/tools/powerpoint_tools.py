@@ -173,7 +173,7 @@ def register_powerpoint_tools(mcp: FastMCP, service: PowerPointService) -> None:
 
     @mcp.tool(
         name="ppt_get_document_properties",
-        description="Read built-in and custom document properties from a PowerPoint file.",
+        description="Read built-in and custom document properties from a PowerPoint file, including timestamps and total editing time when available.",
     )
     def ppt_get_document_properties(path: str) -> dict[str, object]:
         """Inspect built-in and custom PowerPoint document properties."""
@@ -182,7 +182,7 @@ def register_powerpoint_tools(mcp: FastMCP, service: PowerPointService) -> None:
 
     @mcp.tool(
         name="ppt_set_document_properties",
-        description="Update built-in PowerPoint document properties such as author, title, subject, and keywords.",
+        description="Update built-in PowerPoint document properties such as author, title, subject, keywords, comments, category, company, manager, last author, timestamps, total editing time, and revision number.",
     )
     def ppt_set_document_properties(
         path: str,
@@ -194,6 +194,11 @@ def register_powerpoint_tools(mcp: FastMCP, service: PowerPointService) -> None:
         category: str | None = None,
         company: str | None = None,
         manager: str | None = None,
+        last_author: str | None = None,
+        creation_date: str | None = None,
+        last_save_time: str | None = None,
+        total_editing_time: int | None = None,
+        revision_number: str | None = None,
         create_backup: bool = True,
     ) -> dict[str, object]:
         """Write selected built-in document properties."""
@@ -207,6 +212,11 @@ def register_powerpoint_tools(mcp: FastMCP, service: PowerPointService) -> None:
             category=category,
             company=company,
             manager=manager,
+            last_author=last_author,
+            creation_date=creation_date,
+            last_save_time=last_save_time,
+            total_editing_time=total_editing_time,
+            revision_number=revision_number,
             create_backup=create_backup,
         )
         return service.set_document_properties(
@@ -219,6 +229,11 @@ def register_powerpoint_tools(mcp: FastMCP, service: PowerPointService) -> None:
             category=request.category,
             company=request.company,
             manager=request.manager,
+            last_author=request.last_author,
+            creation_date=request.creation_date,
+            last_save_time=request.last_save_time,
+            total_editing_time=request.total_editing_time,
+            revision_number=request.revision_number,
             create_backup=request.create_backup,
         ).model_dump()
 

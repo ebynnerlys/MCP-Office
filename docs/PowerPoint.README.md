@@ -26,6 +26,15 @@ Este servidor expone únicamente herramientas de PowerPoint, además de las herr
 - `ppt_get_document_properties`
 - `ppt_set_document_properties`
 - `ppt_get_file_links`
+
+### Propiedades del documento
+
+- `ppt_get_document_properties`
+  - Lee propiedades integradas y personalizadas del archivo.
+  - Entre las propiedades integradas expuestas están: autor, título, asunto, etiquetas, comentarios, categoría, empresa, manager, último autor, fecha de creación, fecha de último guardado, tiempo total de edición y número de revisión, cuando Office las exponga.
+- `ppt_set_document_properties`
+  - Modifica propiedades integradas escribibles: autor, título, asunto, etiquetas, comentarios, categoría, empresa, manager, último autor, fecha de creación, fecha de último guardado, tiempo total de edición y número de revisión.
+
 - `ppt_duplicate_slide`
 - `ppt_delete_slide`
 - `ppt_move_slide`

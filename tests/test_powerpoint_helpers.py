@@ -462,6 +462,16 @@ def test_document_properties_request_accepts_author_update() -> None:
     assert request.author == "Ada Lovelace"
 
 
+def test_document_properties_request_accepts_editing_stats() -> None:
+    request = PowerPointDocumentPropertiesRequest(
+        path="demo.pptx",
+        total_editing_time=15,
+        creation_date="2026-03-25T10:00:00",
+    )
+    assert request.total_editing_time == 15
+    assert request.creation_date == "2026-03-25T10:00:00"
+
+
 def test_shape_selector_request_requires_exactly_one_selector() -> None:
     with pytest.raises(ValueError):
         PowerPointShapeSelectorRequest(path="demo.pptx", slide_index=1, shape_index=1, shape_name="Box")

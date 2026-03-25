@@ -22,10 +22,10 @@ Cobertura funcional objetivo: inventario exhaustivo, por bloques, de las capacid
   - Dividir un documento por secciones, encabezados o páginas.
 - `word_merge_documents`
   - Unir documentos en uno solo.
-- `word_get_document_properties`
-  - Leer metadatos.
-- `word_set_document_properties`
-  - Editar propiedades.
+- [x] `word_get_document_properties`
+  - Leer propiedades integradas y personalizadas, incluyendo fechas y tiempo total de edición cuando Office lo exponga.
+- [x] `word_set_document_properties`
+  - Modificar autor, título, asunto, etiquetas, comentarios, categoría, empresa, manager, último autor, fechas, tiempo total de edición y número de revisión.
 - `word_add_custom_property`
   - Propiedades personalizadas.
 - `word_remove_custom_property`

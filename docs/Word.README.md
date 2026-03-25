@@ -19,9 +19,19 @@ Este servidor expone únicamente herramientas de Word, además de las herramient
 
 ## Herramientas disponibles
 
+- `word_get_document_properties`
+- `word_set_document_properties`
 - `word_get_structure`
 - `word_replace_text`
 - `word_export_pdf`
+
+### Propiedades del documento
+
+- `word_get_document_properties`
+  - Lee propiedades integradas y personalizadas del archivo.
+  - Entre las propiedades integradas expuestas están: autor, título, asunto, etiquetas, comentarios, categoría, empresa, manager, último autor, fecha de creación, fecha de último guardado, tiempo total de edición y número de revisión, cuando Office las exponga.
+- `word_set_document_properties`
+  - Modifica propiedades integradas escribibles: autor, título, asunto, etiquetas, comentarios, categoría, empresa, manager, último autor, fecha de creación, fecha de último guardado, tiempo total de edición y número de revisión.
 
 ## Arranque rápido
 
